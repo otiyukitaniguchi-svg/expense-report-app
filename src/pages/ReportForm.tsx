@@ -233,6 +233,16 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
       )}
 
       <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+        {!readOnly && (
+          <div className="mb-4 flex justify-end">
+            <button
+              onClick={() => setModalState({ mode: 'create' })}
+              className="rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+            >
+              + 明細を追加
+            </button>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -291,15 +301,6 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
             </tbody>
           </table>
         </div>
-
-        {!readOnly && (
-          <button
-            onClick={() => setModalState({ mode: 'create' })}
-            className="mt-4 rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-          >
-            + 明細を追加
-          </button>
-        )}
 
         <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-4">
           <p className="text-sm text-gray-400">件数: {items.length}</p>
