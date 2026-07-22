@@ -251,12 +251,14 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
             <label className={labelClass}>距離(km)</label>
             <input
               type="number"
-              min={0}
-              step={0.1}
               value={distanceKm}
-              onChange={(e) => setDistanceKm(Number(e.target.value) || 0)}
-              className={fieldClass}
+              readOnly
+              disabled
+              className={`${fieldClass} cursor-not-allowed text-gray-500`}
             />
+            <p className="mt-1 text-xs text-gray-400">
+              距離は手入力できません。「候補を検索」→「この地点で距離を計算」で自動設定されます。
+            </p>
           </div>
           <div className="rounded-md bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
             交通費(自動計算): <span className="font-bold">{computedAmount.toLocaleString()} 円</span>

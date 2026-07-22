@@ -5,7 +5,7 @@ import { PasswordInput } from '../components/PasswordInput'
 import type { Profile, Role } from '../lib/types'
 
 const inputClass =
-  'rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 transition focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100'
+  'rounded-md border-2 border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100'
 
 const roleLabels: Record<Role, string> = {
   employee: '一般ユーザー',
@@ -140,15 +140,19 @@ export function EmployeeMaster(): JSX.Element {
     }
   }
 
-  if (loading) return <p className="p-8 text-sm text-gray-400">読み込み中…</p>
+  if (loading) return <p className="p-8 text-sm text-gray-500">読み込み中…</p>
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-8">
-      <h1 className="text-2xl font-bold text-gray-900">社員一覧</h1>
+    <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-8">
+      <h1 className="text-3xl font-bold text-gray-900">社員一覧</h1>
 
-      <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-        <h2 className="mb-4 font-semibold text-gray-800">社員を追加</h2>
-        {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+      <section className="rounded-xl border-2 border-gray-300 bg-white p-5 shadow-sm">
+        <h2 className="mb-4 text-lg font-bold text-gray-900">社員を追加</h2>
+        {error && (
+          <p className="mb-4 rounded-md border-2 border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+            {error}
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
           <input
             value={form.name}
@@ -199,36 +203,37 @@ export function EmployeeMaster(): JSX.Element {
         <button
           onClick={createEmployee}
           disabled={creating}
-          className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+          className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
         >
           {creating ? '追加中…' : '+ 社員を追加'}
         </button>
       </section>
 
-      <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 bg-blue-50/60 text-xs font-medium text-blue-700">
-              <th className="p-4">氏名</th>
-              <th className="p-4">役割</th>
-              <th className="p-4">部署</th>
-              <th className="p-4">承認者</th>
-              <th className="p-4">パスワード変更</th>
-            </tr>
-          </thead>
-          <tbody>
-            {profiles.map((p) => {
-              const manager = p.manager_id ? profileById.get(p.manager_id) : null
-              return (
-                <tr key={p.id} className="border-b border-gray-50 last:border-0">
-                  <td className="p-4">
-                    <input
-                      value={names[p.id] ?? ''}
-                      onChange={(e) => setNames({ ...names, [p.id]: e.target.value })}
-                      onBlur={() => saveName(p.id)}
-                      className={`${inputClass} w-40 font-medium text-gray-800`}
-                    />
-                  </td>
+      <section className="rounded-xl border-2 border-gray-300 bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[860px] text-left text-base">
+            <thead>
+              <tr className="border-b-2 border-gray-300 bg-blue-50 text-sm font-bold text-blue-800">
+                <th className="p-4">氏名</th>
+                <th className="p-4">役割</th>
+                <th className="p-4">部署</th>
+                <th className="p-4">承認者</th>
+                <th className="p-4">パスワード変更</th>
+              </tr>
+            </thead>
+            <tbody>
+              {profiles.map((p) => {
+                const manager = p.manager_id ? profileById.get(p.manager_id) : null
+                return (
+                  <tr key={p.id} className="border-b border-gray-200 last:border-0">
+                    <td className="p-4">
+                      <input
+                        value={names[p.id] ?? ''}
+                        onChange={(e) => setNames({ ...names, [p.id]: e.target.value })}
+                        onBlur={() => saveName(p.id)}
+                        className={`${inputClass} w-40 font-bold text-gray-900`}
+                      />
+                    </td>
                   <td className="p-4">
                     <select
                       value={p.role}
@@ -256,7 +261,7 @@ export function EmployeeMaster(): JSX.Element {
                       ))}
                     </select>
                   </td>
-                  <td className="p-4 text-gray-500">{manager?.name ?? '-'}</td>
+                  <td className="p-4 font-semibold text-gray-700">{manager?.name ?? '-'}</td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
                       <PasswordInput
@@ -271,15 +276,15 @@ export function EmployeeMaster(): JSX.Element {
                       <button
                         onClick={() => changePassword(p.id)}
                         disabled={changingPasswordFor === p.id || !newPasswords[p.id]}
-                        className="whitespace-nowrap rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+                        className="whitespace-nowrap rounded-md border-2 border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
                       >
                         {changingPasswordFor === p.id ? '変更中…' : '変更'}
                       </button>
                     </div>
                     {passwordMessage[p.id] && (
                       <p
-                        className={`mt-1 text-xs ${
-                          passwordMessage[p.id] === '変更しました' ? 'text-emerald-600' : 'text-red-500'
+                        className={`mt-1 text-xs font-semibold ${
+                          passwordMessage[p.id] === '変更しました' ? 'text-emerald-600' : 'text-red-600'
                         }`}
                       >
                         {passwordMessage[p.id]}
@@ -289,8 +294,9 @@ export function EmployeeMaster(): JSX.Element {
                 </tr>
               )
             })}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   )

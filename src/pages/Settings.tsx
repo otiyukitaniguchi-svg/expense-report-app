@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useAppSettings } from '../lib/useAppSettings'
 
 const inputClass =
-  'w-24 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 transition focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100'
+  'w-24 rounded-md border-2 border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100'
 
 export function Settings(): JSX.Element {
   const { settings, loading, refresh } = useAppSettings()
@@ -50,15 +50,15 @@ export function Settings(): JSX.Element {
     refresh()
   }
 
-  if (loading) return <p className="p-8 text-sm text-gray-400">読み込み中…</p>
+  if (loading) return <p className="p-8 text-sm text-gray-500">読み込み中…</p>
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-8">
-      <h1 className="text-2xl font-bold text-gray-900">設定</h1>
+    <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-8">
+      <h1 className="text-3xl font-bold text-gray-900">設定</h1>
 
-      <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-        <h2 className="mb-1 font-semibold text-gray-800">申請可能期間</h2>
-        <p className="mb-4 text-sm text-gray-400">
+      <section className="rounded-xl border-2 border-gray-300 bg-white p-5 shadow-sm">
+        <h2 className="mb-1 text-lg font-bold text-gray-900">申請可能期間</h2>
+        <p className="mb-4 text-sm font-medium text-gray-600">
           毎月この日付の範囲内のみ、申請の提出ができます(明細の入力・下書き保存はいつでも可能です)。
         </p>
         <div className="flex items-center gap-3">
@@ -70,7 +70,7 @@ export function Settings(): JSX.Element {
             onChange={(e) => setStartDay(Number(e.target.value))}
             className={inputClass}
           />
-          <span className="text-sm text-gray-500">日 〜</span>
+          <span className="text-sm font-bold text-gray-700">日 〜</span>
           <input
             type="number"
             min={1}
@@ -79,18 +79,18 @@ export function Settings(): JSX.Element {
             onChange={(e) => setEndDay(Number(e.target.value))}
             className={inputClass}
           />
-          <span className="text-sm text-gray-500">日</span>
+          <span className="text-sm font-bold text-gray-700">日</span>
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-        <h2 className="mb-1 font-semibold text-gray-800">交通費(ガソリン代)自動計算</h2>
-        <p className="mb-4 text-sm text-gray-400">
-          「交通費詳細」の距離(km)から、距離×単価÷燃費×季節指数 で金額を自動計算します。
+      <section className="rounded-xl border-2 border-gray-300 bg-white p-5 shadow-sm">
+        <h2 className="mb-1 text-lg font-bold text-gray-900">交通費(ガソリン代)自動計算</h2>
+        <p className="mb-4 text-sm font-medium text-gray-600">
+          「交通費詳細」の距離(km)から、距離×単価÷(燃費×季節指数) で金額を自動計算します。
         </p>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">単価(円/L)</label>
+            <label className="mb-1.5 block text-sm font-bold text-gray-700">単価(円/L)</label>
             <input
               type="number"
               min={0}
@@ -101,7 +101,7 @@ export function Settings(): JSX.Element {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">燃費(Km/L)</label>
+            <label className="mb-1.5 block text-sm font-bold text-gray-700">燃費(Km/L)</label>
             <input
               type="number"
               min={0.1}
@@ -112,7 +112,7 @@ export function Settings(): JSX.Element {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+            <label className="mb-1.5 block text-sm font-bold text-gray-700">
               季節指数(夏場: 4〜10月)
             </label>
             <input
@@ -125,7 +125,7 @@ export function Settings(): JSX.Element {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+            <label className="mb-1.5 block text-sm font-bold text-gray-700">
               季節指数(冬場: 11〜3月)
             </label>
             <input
@@ -140,16 +140,16 @@ export function Settings(): JSX.Element {
         </div>
       </section>
 
-      {message && <p className="text-sm text-emerald-600">{message}</p>}
+      {message && <p className="text-sm font-bold text-emerald-700">{message}</p>}
       <button
         onClick={save}
         disabled={saving}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
       >
         {saving ? '保存中…' : '保存'}
       </button>
 
-      <p className="text-sm text-gray-400">その他の詳細設定(締め日など)は今後追加予定です。</p>
+      <p className="text-sm font-medium text-gray-500">その他の詳細設定(締め日など)は今後追加予定です。</p>
     </div>
   )
 }

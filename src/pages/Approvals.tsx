@@ -109,76 +109,80 @@ export function Approvals({ managerId, onOpenReport }: Props): JSX.Element {
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">承認</h1>
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xl font-bold text-gray-900">承認</h1>
         <button
           onClick={exportPdf}
           disabled={exporting || reports.length === 0}
-          className="rounded-md border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+          className="rounded-md border-2 border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
         >
           {exporting ? '出力中…' : 'PDF出力(明細一覧を印刷)'}
         </button>
       </div>
 
       {error && (
-        <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+        <p className="mb-4 rounded-md border-2 border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+          {error}
+        </p>
       )}
 
-      <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
+      <div className="rounded-xl border-2 border-gray-300 bg-white shadow-sm">
         {loading ? (
-          <p className="p-8 text-sm text-gray-400">読み込み中…</p>
+          <p className="p-8 text-sm text-gray-500">読み込み中…</p>
         ) : reports.length === 0 ? (
-          <p className="p-8 text-sm text-gray-400">対象の申請はありません。</p>
+          <p className="p-8 text-sm text-gray-500">対象の申請はありません。</p>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-xs font-medium text-gray-400">
-                <th className="p-4">申請者</th>
-                <th className="p-4">タイトル</th>
-                <th className="p-4">状態</th>
-                <th className="p-4">合計金額</th>
-                <th className="p-4">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reports.map((r) => (
-                <tr key={r.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
-                  <td className="p-4 text-gray-700">{r.profiles?.name ?? '-'}</td>
-                  <td
-                    className="cursor-pointer p-4 font-medium text-blue-600 hover:underline"
-                    onClick={() => onOpenReport(r.id)}
-                  >
-                    {r.title}
-                  </td>
-                  <td className="p-4">
-                    <StatusBadge status={r.status} />
-                  </td>
-                  <td className="p-4 text-gray-700">{r.total_amount.toLocaleString()} 円</td>
-                  <td className="p-4">
-                    {(r.status === 'submitted' || r.status === 'approved') && (
-                      <div className="flex gap-2">
-                        {r.status === 'submitted' && (
-                          <button
-                            onClick={() => decide(r.id, true)}
-                            className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-emerald-700"
-                          >
-                            承認
-                          </button>
-                        )}
-                        <button
-                          onClick={() => decide(r.id, false)}
-                          className="rounded-md bg-red-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-red-600"
-                        >
-                          差し戻し
-                        </button>
-                      </div>
-                    )}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left text-base">
+              <thead>
+                <tr className="border-b-2 border-gray-300 bg-gray-100 text-sm font-bold text-gray-700">
+                  <th className="p-4">申請者</th>
+                  <th className="p-4">タイトル</th>
+                  <th className="p-4">状態</th>
+                  <th className="p-4">合計金額</th>
+                  <th className="p-4">操作</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {reports.map((r) => (
+                  <tr key={r.id} className="border-b border-gray-200 last:border-0 hover:bg-gray-50">
+                    <td className="p-4 font-bold text-gray-900">{r.profiles?.name ?? '-'}</td>
+                    <td
+                      className="cursor-pointer p-4 font-bold text-blue-600 hover:underline"
+                      onClick={() => onOpenReport(r.id)}
+                    >
+                      {r.title}
+                    </td>
+                    <td className="p-4">
+                      <StatusBadge status={r.status} />
+                    </td>
+                    <td className="p-4 font-bold text-gray-900">{r.total_amount.toLocaleString()} 円</td>
+                    <td className="p-4">
+                      {(r.status === 'submitted' || r.status === 'approved') && (
+                        <div className="flex gap-2">
+                          {r.status === 'submitted' && (
+                            <button
+                              onClick={() => decide(r.id, true)}
+                              className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
+                            >
+                              承認
+                            </button>
+                          )}
+                          <button
+                            onClick={() => decide(r.id, false)}
+                            className="rounded-md bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-red-600"
+                          >
+                            差し戻し
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

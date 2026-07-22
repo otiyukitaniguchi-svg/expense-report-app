@@ -123,13 +123,13 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
       : reports.filter((r) => (r.report_month ?? monthOfDateStr(r.submitted_at)) === monthFilter)
 
   return (
-    <div className="mx-auto max-w-6xl p-8">
-      <div className="mb-6 flex items-center gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">申請状況</h1>
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <h1 className="text-3xl font-bold text-gray-900">申請状況</h1>
         <select
           value={monthFilter}
           onChange={(e) => setMonthFilter(e.target.value)}
-          className="rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700"
+          className="rounded-md border-2 border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700"
         >
           <option value="all">すべて</option>
           {recentMonths(12).map((m) => (
@@ -140,66 +140,72 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
         </select>
       </div>
 
-      {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="mb-4 rounded-md border-2 border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+          {error}
+        </p>
+      )}
 
-      <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
+      <div className="rounded-xl border-2 border-gray-300 bg-white shadow-sm">
         {loading ? (
-          <p className="p-8 text-sm text-gray-400">読み込み中…</p>
+          <p className="p-8 text-sm text-gray-500">読み込み中…</p>
         ) : filteredReports.length === 0 ? (
-          <p className="p-8 text-sm text-gray-400">提出済みの申請はまだありません。</p>
+          <p className="p-8 text-sm text-gray-500">提出済みの申請はまだありません。</p>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-xs font-medium text-gray-400">
-                <th className="p-4">申請者</th>
-                <th className="p-4">日付</th>
-                <th className="p-4">状態</th>
-                <th className="p-4">合計金額</th>
-                <th className="p-4">提出日</th>
-                <th className="p-4">PDF化</th>
-                <th className="p-4 text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredReports.map((r) => (
-                <tr key={r.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
-                  <td className="p-4 font-medium text-gray-800">{userName}</td>
-                  <td
-                    className="cursor-pointer p-4 font-medium text-blue-600 hover:underline"
-                    onClick={() => onOpenReport(r.id)}
-                  >
-                    {r.report_month ? formatMonthLabel(r.report_month) : r.title}
-                  </td>
-                  <td className="p-4">
-                    <StatusBadge status={r.status} />
-                  </td>
-                  <td className="p-4 text-gray-700">{r.total_amount.toLocaleString()} 円</td>
-                  <td className="p-4 text-gray-500">
-                    {r.submitted_at ? new Date(r.submitted_at).toLocaleDateString('ja-JP') : '-'}
-                  </td>
-                  <td className="p-4">
-                    <button
-                      onClick={() => generatePdf(r)}
-                      disabled={generatingId === r.id}
-                      className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
-                    >
-                      {generatingId === r.id ? '作成中…' : 'PDF化'}
-                    </button>
-                  </td>
-                  <td className="p-4 text-right">
-                    {r.status === 'rejected' && (
-                      <button
-                        onClick={() => deleteReport(r.id)}
-                        className="text-xs font-medium text-red-500 hover:text-red-700 hover:underline"
-                      >
-                        削除
-                      </button>
-                    )}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-left text-base">
+              <thead>
+                <tr className="border-b-2 border-gray-300 bg-gray-100 text-sm font-bold text-gray-700">
+                  <th className="p-4">申請者</th>
+                  <th className="p-4">日付</th>
+                  <th className="p-4">状態</th>
+                  <th className="p-4">合計金額</th>
+                  <th className="p-4">提出日</th>
+                  <th className="p-4">PDF化</th>
+                  <th className="p-4 text-right">操作</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredReports.map((r) => (
+                  <tr key={r.id} className="border-b border-gray-200 last:border-0 hover:bg-gray-50">
+                    <td className="p-4 font-bold text-gray-900">{userName}</td>
+                    <td
+                      className="cursor-pointer p-4 font-bold text-blue-600 hover:underline"
+                      onClick={() => onOpenReport(r.id)}
+                    >
+                      {r.report_month ? formatMonthLabel(r.report_month) : r.title}
+                    </td>
+                    <td className="p-4">
+                      <StatusBadge status={r.status} />
+                    </td>
+                    <td className="p-4 font-bold text-gray-900">{r.total_amount.toLocaleString()} 円</td>
+                    <td className="p-4 text-gray-700">
+                      {r.submitted_at ? new Date(r.submitted_at).toLocaleDateString('ja-JP') : '-'}
+                    </td>
+                    <td className="p-4">
+                      <button
+                        onClick={() => generatePdf(r)}
+                        disabled={generatingId === r.id}
+                        className="rounded-md border-2 border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+                      >
+                        {generatingId === r.id ? '作成中…' : 'PDF化'}
+                      </button>
+                    </td>
+                    <td className="p-4 text-right">
+                      {r.status === 'rejected' && (
+                        <button
+                          onClick={() => deleteReport(r.id)}
+                          className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
+                        >
+                          削除
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

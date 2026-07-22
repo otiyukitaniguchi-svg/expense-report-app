@@ -246,6 +246,71 @@ export function buildSingleReportSlipHtml(slip: SingleReportSlip): string {
 </html>`
 }
 
+export interface PdfTransportationRow {
+  date: string
+  departure: string
+  arrival: string
+  distanceKm: number
+  amount: number
+  memo: string
+}
+
+export function buildTransportationListHtml(
+  rows: PdfTransportationRow[],
+  employeeName: string,
+  title: string
+): string {
+  const total = rows.reduce((sum, r) => sum + r.amount, 0)
+  const tableRows = rows
+    .map(
+      (r) => `
+    <tr>
+      <td>${escapeHtml(r.date)}</td>
+      <td>${escapeHtml(r.departure)}</td>
+      <td>${escapeHtml(r.arrival)}</td>
+      <td class="amount">${r.distanceKm}</td>
+      <td class="amount">${r.amount.toLocaleString()}</td>
+      <td>${escapeHtml(r.memo)}</td>
+    </tr>`
+    )
+    .join('')
+
+  return `<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  ${PDF_STYLE}
+</style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  <p class="meta">申請者: ${escapeHtml(employeeName)} / 出力日: ${new Date().toLocaleDateString('ja-JP')} / 件数: ${rows.length}</p>
+  <table>
+    <thead>
+      <tr>
+        <th>日付</th>
+        <th>出発地</th>
+        <th>到着地</th>
+        <th class="amount">距離(km)</th>
+        <th class="amount">金額</th>
+        <th>備考</th>
+      </tr>
+    </thead>
+    <tbody>${tableRows}</tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4">合計</td>
+        <td class="amount">${total.toLocaleString()}</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+</body>
+</html>`
+}
+
 export function buildReportsPreviewHtml(sections: PdfReportSection[]): string {
   const grandTotal = sections.reduce(
     (sum, s) => sum + s.items.reduce((itemSum, i) => itemSum + i.amount, 0),

@@ -2,19 +2,22 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAppSettings } from '../lib/useAppSettings'
 import { TransportationRouteModal } from '../components/TransportationRouteModal'
+import { buildTransportationListHtml } from '../lib/pdfExport'
 import type { TransportationRoute } from '../lib/types'
 
 interface Props {
   userId: string
+  userName: string
 }
 
 type ModalState = { mode: 'closed' } | { mode: 'create' } | { mode: 'edit'; item: TransportationRoute }
 
-export function TransportationDetails({ userId }: Props): JSX.Element {
+export function TransportationDetails({ userId, userName }: Props): JSX.Element {
   const { settings } = useAppSettings()
   const [routes, setRoutes] = useState<TransportationRoute[]>([])
   const [loading, setLoading] = useState(true)
   const [modalState, setModalState] = useState<ModalState>({ mode: 'closed' })
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function load(): Promise<void> {
@@ -64,70 +67,114 @@ export function TransportationDetails({ userId }: Props): JSX.Element {
     load()
   }
 
+  function exportPdf(): void {
+    if (routes.length === 0) return
+    // ポップアップブロックを避けるため、非同期処理の前にユーザー操作と同期して開く
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      setError('ポップアップがブロックされました。ブラウザの設定でこのサイトのポップアップを許可してください。')
+      return
+    }
+    setExporting(true)
+    try {
+      const html = buildTransportationListHtml(
+        routes.map((r) => ({
+          date: r.date,
+          departure: r.departure,
+          arrival: r.arrival,
+          distanceKm: r.distance_km,
+          amount: Number(r.amount),
+          memo: r.memo ?? ''
+        })),
+        userName,
+        '交通費詳細'
+      )
+      printWindow.document.open()
+      printWindow.document.write(html)
+      printWindow.document.close()
+      printWindow.focus()
+      printWindow.print()
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const total = routes.reduce((sum, r) => sum + Number(r.amount), 0)
 
   return (
-    <div className="mx-auto max-w-6xl p-8">
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">交通費詳細</h1>
-
-      {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-
-      <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-        <div className="mb-4 flex justify-end">
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xl font-bold text-gray-900">交通費詳細</h1>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={exportPdf}
+            disabled={exporting || routes.length === 0}
+            className="rounded-md border-2 border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+          >
+            {exporting ? '出力中…' : 'PDF出力'}
+          </button>
           <button
             onClick={() => setModalState({ mode: 'create' })}
-            className="rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"
           >
             + 交通費詳細を追加
           </button>
         </div>
+      </div>
 
+      {error && (
+        <p className="mb-4 rounded-md border-2 border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+          {error}
+        </p>
+      )}
+
+      <div className="rounded-xl border-2 border-gray-300 bg-white p-6 shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="w-full min-w-[720px] text-left text-base">
             <thead>
-              <tr className="border-b border-gray-100 text-xs font-medium text-gray-400">
-                <th className="p-2">日付</th>
-                <th className="p-2">出発地</th>
-                <th className="p-2">到着地</th>
-                <th className="p-2">距離(km)</th>
-                <th className="p-2">金額</th>
-                <th className="p-2">備考</th>
-                <th className="p-2 text-right">操作</th>
+              <tr className="border-b-2 border-gray-300 bg-gray-100 text-sm font-bold text-gray-700">
+                <th className="p-3">日付</th>
+                <th className="p-3">出発地</th>
+                <th className="p-3">到着地</th>
+                <th className="p-3">距離(km)</th>
+                <th className="p-3">金額</th>
+                <th className="p-3">備考</th>
+                <th className="p-3 text-right">操作</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-sm text-gray-400">
+                  <td colSpan={7} className="p-6 text-center text-sm text-gray-500">
                     読み込み中…
                   </td>
                 </tr>
               ) : routes.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-sm text-gray-400">
+                  <td colSpan={7} className="p-6 text-center text-sm text-gray-500">
                     交通費詳細がまだありません。「+ 交通費詳細を追加」から入力してください。
                   </td>
                 </tr>
               ) : (
                 routes.map((r) => (
-                  <tr key={r.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
-                    <td className="p-3 text-gray-700">{r.date}</td>
-                    <td className="p-3 text-gray-700">{r.departure}</td>
-                    <td className="p-3 text-gray-700">{r.arrival}</td>
-                    <td className="p-3 text-gray-700">{r.distance_km}</td>
-                    <td className="p-3 text-gray-700">{Number(r.amount).toLocaleString()} 円</td>
-                    <td className="p-3 text-gray-700">{r.memo ?? '-'}</td>
+                  <tr key={r.id} className="border-b border-gray-200 last:border-0 hover:bg-gray-50">
+                    <td className="p-3 font-medium text-gray-900">{r.date}</td>
+                    <td className="p-3 text-gray-900">{r.departure}</td>
+                    <td className="p-3 text-gray-900">{r.arrival}</td>
+                    <td className="p-3 text-gray-900">{r.distance_km}</td>
+                    <td className="p-3 font-bold text-gray-900">{Number(r.amount).toLocaleString()} 円</td>
+                    <td className="p-3 text-gray-900">{r.memo ?? '-'}</td>
                     <td className="p-3">
                       <div className="flex justify-end gap-3">
                         <button
                           onClick={() => setModalState({ mode: 'edit', item: r })}
-                          className="text-xs font-medium text-blue-600 hover:underline"
+                          className="text-sm font-bold text-blue-600 hover:underline"
                         >
                           編集
                         </button>
                         <button
                           onClick={() => removeRoute(r.id)}
-                          className="text-xs font-medium text-red-500 hover:text-red-700 hover:underline"
+                          className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
                         >
                           削除
                         </button>
@@ -140,11 +187,11 @@ export function TransportationDetails({ userId }: Props): JSX.Element {
           </table>
         </div>
 
-        <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-4">
-          <p className="text-sm text-gray-400">件数: {routes.length}</p>
-          <p className="text-lg font-bold text-gray-900">
+        <div className="mt-6 flex items-center justify-between border-t-2 border-gray-300 pt-4">
+          <p className="text-sm font-semibold text-gray-500">件数: {routes.length}</p>
+          <p className="text-xl font-bold text-gray-900">
             合計 <span className="ml-1">{total.toLocaleString()}</span>
-            <span className="ml-0.5 text-sm font-medium text-gray-400">円</span>
+            <span className="ml-0.5 text-sm font-semibold text-gray-500">円</span>
           </p>
         </div>
       </div>

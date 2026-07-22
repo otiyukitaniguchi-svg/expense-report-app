@@ -246,7 +246,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
   if (loading || !report) return <p className="p-8 text-sm text-gray-400">読み込み中…</p>
 
   return (
-    <div className="mx-auto max-w-6xl p-8">
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
       <button
         onClick={onDone}
         className="mb-4 text-sm text-blue-600 hover:text-blue-700 hover:underline"
@@ -260,14 +260,14 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
           disabled={readOnly}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={saveTitle}
-          className="w-80 rounded-md border border-transparent bg-transparent px-1 text-2xl font-bold text-gray-900 transition focus:border-blue-300 focus:bg-blue-50/40 focus:outline-none disabled:text-gray-900"
+          className="w-full rounded-md border-2 border-transparent bg-transparent px-1 text-2xl font-bold text-gray-900 transition focus:border-blue-300 focus:bg-blue-50/40 focus:outline-none disabled:text-gray-900 md:w-80 md:text-3xl"
         />
         <StatusBadge status={report.status} />
         {isMonthMode && (
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700"
+            className="rounded-md border-2 border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700"
           >
             {recentMonths(12).map((m) => (
               <option key={m} value={m}>
@@ -279,44 +279,46 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
       </div>
 
       {error && (
-        <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+        <p className="mb-4 rounded-md border-2 border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+          {error}
+        </p>
       )}
       {successMessage && (
-        <p className="mb-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+        <p className="mb-4 rounded-md border-2 border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
           {successMessage}
         </p>
       )}
 
-      <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+      <div className="rounded-xl border-2 border-gray-300 bg-white p-6 shadow-sm">
         {!readOnly && (
           <div className="mb-4 flex justify-end gap-2">
             {isMonthMode && (
               <button
                 onClick={toggleSelectAll}
-                className="rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                className="rounded-md border-2 border-gray-300 px-3 py-1.5 text-sm font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
               >
                 全選択
               </button>
             )}
             <button
               onClick={() => setModalState({ mode: 'create' })}
-              className="rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"
             >
               + 明細を追加
             </button>
           </div>
         )}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="w-full min-w-[880px] text-left text-base">
             <thead>
-              <tr className="border-b border-gray-100 text-xs font-medium text-gray-400">
+              <tr className="border-b-2 border-gray-300 bg-gray-100 text-sm font-bold text-gray-700">
                 {isMonthMode && !readOnly && (
                   <th className="w-8 p-2">
                     <input
                       type="checkbox"
                       checked={items.length > 0 && selectedItemIds.size === items.length}
                       onChange={toggleSelectAll}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-200"
+                      className="h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-200"
                     />
                   </th>
                 )}
@@ -332,40 +334,40 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
+                <tr key={item.id} className="border-b border-gray-200 last:border-0 hover:bg-gray-50">
                   {isMonthMode && !readOnly && (
                     <td className="p-3">
                       <input
                         type="checkbox"
                         checked={selectedItemIds.has(item.id)}
                         onChange={() => toggleItemSelected(item.id)}
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-200"
+                        className="h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-200"
                       />
                     </td>
                   )}
-                  <td className="p-3 text-gray-700">{item.date}</td>
-                  <td className="p-3 text-gray-700">
+                  <td className="p-3 font-medium text-gray-900">{item.date}</td>
+                  <td className="p-3 text-gray-900">
                     {(item.category_id && categoryNameById.get(item.category_id)) ?? '-'}
                   </td>
-                  <td className="p-3 text-gray-700">{item.description || '-'}</td>
-                  <td className="p-3 text-gray-700">{Number(item.amount).toLocaleString()} 円</td>
-                  <td className="p-3 text-gray-700">{item.payee ?? '-'}</td>
-                  <td className="p-3 text-gray-700">
+                  <td className="p-3 text-gray-900">{item.description || '-'}</td>
+                  <td className="p-3 font-bold text-gray-900">{Number(item.amount).toLocaleString()} 円</td>
+                  <td className="p-3 text-gray-900">{item.payee ?? '-'}</td>
+                  <td className="p-3 text-gray-900">
                     {(item.tax_category_id && taxNameById.get(item.tax_category_id)) ?? '-'}
                   </td>
-                  <td className="p-3 text-gray-700">{item.memo ?? '-'}</td>
+                  <td className="p-3 text-gray-900">{item.memo ?? '-'}</td>
                   <td className="p-3">
                     {!readOnly && (
                       <div className="flex justify-end gap-3">
                         <button
                           onClick={() => setModalState({ mode: 'edit', item })}
-                          className="text-xs font-medium text-blue-600 hover:underline"
+                          className="text-sm font-bold text-blue-600 hover:underline"
                         >
                           編集
                         </button>
                         <button
                           onClick={() => removeItem(item.id)}
-                          className="text-xs font-medium text-red-500 hover:text-red-700 hover:underline"
+                          className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
                         >
                           削除
                         </button>
@@ -376,7 +378,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="p-6 text-center text-sm text-gray-400">
+                  <td colSpan={9} className="p-6 text-center text-sm text-gray-500">
                     明細がまだありません。「+ 明細を追加」から入力してください。
                   </td>
                 </tr>
@@ -385,11 +387,11 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
           </table>
         </div>
 
-        <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-4">
-          <p className="text-sm text-gray-400">件数: {items.length}</p>
-          <p className="text-lg font-bold text-gray-900">
+        <div className="mt-6 flex items-center justify-between border-t-2 border-gray-300 pt-4">
+          <p className="text-sm font-semibold text-gray-500">件数: {items.length}</p>
+          <p className="text-xl font-bold text-gray-900">
             合計 <span className="ml-1">{total.toLocaleString()}</span>
-            <span className="ml-0.5 text-sm font-medium text-gray-400">円</span>
+            <span className="ml-0.5 text-sm font-semibold text-gray-500">円</span>
           </p>
         </div>
       </div>
@@ -397,7 +399,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
       <div className="mt-6 flex justify-end gap-3">
         <button
           onClick={onDone}
-          className="rounded-md border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+          className="rounded-md border-2 border-gray-300 px-5 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50"
         >
           一覧に戻る
         </button>
@@ -411,7 +413,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
                   ? undefined
                   : `提出可能期間: ${settings.submission_start_day}日〜${settings.submission_end_day}日`
               }
-              className="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+              className="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
             >
               {submitting
                 ? '提出中…'
@@ -420,7 +422,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
                   : '提出する'}
             </button>
             {!withinSubmissionPeriod && settings && (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs font-semibold text-gray-500">
                 提出可能期間: {settings.submission_start_day}日〜{settings.submission_end_day}日
               </p>
             )}
