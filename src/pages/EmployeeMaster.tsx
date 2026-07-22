@@ -136,7 +136,7 @@ export function EmployeeMaster(): JSX.Element {
             type="email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
-            placeholder="ログイン用メールアドレス"
+            placeholder="メールアドレス(社内管理用。ログインは氏名で行います)"
             className={inputClass}
           />
           <input

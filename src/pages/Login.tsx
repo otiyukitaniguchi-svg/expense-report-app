@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 
 export function Login(): JSX.Element {
   const { signIn } = useAuth()
-  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -12,7 +12,7 @@ export function Login(): JSX.Element {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
-    const message = await signIn(email, password)
+    const message = await signIn(name, password)
     setSubmitting(false)
     if (message) setError(message)
   }
@@ -27,12 +27,12 @@ export function Login(): JSX.Element {
           <h1 className="text-lg font-bold text-gray-900">経費精算システム</h1>
         </div>
 
-        <label className="mb-1.5 block text-sm font-medium text-gray-700">メールアドレス</label>
+        <label className="mb-1.5 block text-sm font-medium text-gray-700">氏名</label>
         <input
-          type="email"
+          type="text"
           required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           className="mb-5 w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 transition focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
         />
         <label className="mb-1.5 block text-sm font-medium text-gray-700">パスワード</label>

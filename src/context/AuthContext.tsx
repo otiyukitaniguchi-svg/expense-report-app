@@ -14,7 +14,7 @@ interface AuthContextValue {
   session: Session | null
   profile: Profile | null
   loading: boolean
-  signIn: (email: string, password: string) => Promise<string | null>
+  signIn: (name: string, password: string) => Promise<string | null>
   signOut: () => Promise<void>
 }
 
@@ -61,9 +61,15 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     }
   }, [])
 
-  const signIn = useCallback(async (email: string, password: string) => {
+  const signIn = useCallback(async (name: string, password: string) => {
+    const { data: email, error: resolveError } = await supabase.rpc('resolve_login_email', {
+      p_name: name
+    })
+    if (resolveError || !email) {
+      return '氏名またはパスワードが正しくありません'
+    }
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return error ? error.message : null
+    return error ? '氏名またはパスワードが正しくありません' : null
   }, [])
 
   const signOut = useCallback(async () => {
