@@ -103,6 +103,152 @@ export function buildExpenseListHtml(rows: PdfListRow[], title: string): string 
 </html>`
 }
 
+export interface SingleReportSlipItem {
+  date: string
+  categoryName: string
+  payee: string
+  description: string
+  memo: string
+  amount: number
+}
+
+export interface SingleReportSlip {
+  employeeName: string
+  departmentName: string
+  statusLabel: string
+  submittedAtLabel: string
+  periodLabel: string
+  items: SingleReportSlipItem[]
+}
+
+export function buildSingleReportSlipHtml(slip: SingleReportSlip): string {
+  const total = slip.items.reduce((sum, i) => sum + i.amount, 0)
+
+  const categoryTotals = new Map<string, number>()
+  for (const i of slip.items) {
+    categoryTotals.set(i.categoryName, (categoryTotals.get(i.categoryName) ?? 0) + i.amount)
+  }
+
+  const itemRows = slip.items
+    .map(
+      (i) => `
+    <tr>
+      <td class="center">${escapeHtml(slip.statusLabel)}</td>
+      <td class="center">${escapeHtml(i.date)}</td>
+      <td>${escapeHtml(i.categoryName)}</td>
+      <td>${escapeHtml(i.payee || '-')}</td>
+      <td>${escapeHtml(i.description || '-')}</td>
+      <td>${escapeHtml(i.memo || '-')}</td>
+      <td class="amount">¥ ${i.amount.toLocaleString()}</td>
+    </tr>`
+    )
+    .join('')
+
+  const categoryRows = Array.from(categoryTotals.entries())
+    .map(
+      ([name, amount]) => `
+    <tr>
+      <td>${escapeHtml(name)}</td>
+      <td class="amount">¥ ${amount.toLocaleString()}</td>
+    </tr>`
+    )
+    .join('')
+
+  return `<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<style>
+  @page { size: A4 portrait; margin: 9mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Yu Gothic", "Meiryo", sans-serif; font-size: 16px; color: #000; padding: 6px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
+  h1 { font-size: 32px; font-weight: 800; margin: 0; letter-spacing: 0.05em; }
+  .header-right { text-align: right; font-size: 16px; font-weight: 700; line-height: 1.6; }
+  .meta { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #000; padding-bottom: 8px; margin-bottom: 14px; }
+  .meta div { font-size: 17px; font-weight: 700; }
+  .meta .name { font-size: 26px; font-weight: 800; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th, td { border: 1.5px solid #000; padding: 7px 9px; font-size: 15px; font-weight: 600; text-align: left; }
+  td.center, th.center { text-align: center; }
+  th { background: #2b2b2b; color: #fff; font-weight: 800; font-size: 14px; }
+  td.amount, th.amount { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+  tfoot td { font-weight: 800; background: #e2e2e2; font-size: 17px; }
+  .category-table { width: 60%; }
+  .category-table th { background: #555; }
+  .approval-table th { background: #000; color: #fff; text-align: center; font-size: 15px; }
+  .approval-table td { height: 74px; vertical-align: top; text-align: center; font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>経費精算</h1>
+    <div class="header-right">
+      <div>提出日：${escapeHtml(slip.submittedAtLabel)}</div>
+      <div>対象期間：${escapeHtml(slip.periodLabel)}</div>
+    </div>
+  </div>
+
+  <div class="meta">
+    <div>グループ：${escapeHtml(slip.departmentName || '-')}</div>
+    <div class="name">氏名：${escapeHtml(slip.employeeName)}</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th class="center">状態</th>
+        <th class="center">日付</th>
+        <th>科目名</th>
+        <th>支払先</th>
+        <th>摘要</th>
+        <th>備考</th>
+        <th class="amount">計</th>
+      </tr>
+    </thead>
+    <tbody>${itemRows}</tbody>
+    <tfoot>
+      <tr>
+        <td colspan="6">合計</td>
+        <td class="amount">¥ ${total.toLocaleString()}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <table class="category-table">
+    <thead>
+      <tr>
+        <th>科目別</th>
+        <th class="amount">計</th>
+      </tr>
+    </thead>
+    <tbody>${categoryRows}</tbody>
+  </table>
+
+  <table class="approval-table">
+    <thead>
+      <tr>
+        <th style="background:#fff;border:none;"></th>
+        <th style="background:#fff;border:none;"></th>
+        <th>承認</th>
+        <th>確認</th>
+        <th>申請</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="border:none;"></td>
+        <td style="border:none;"></td>
+        <td></td>
+        <td></td>
+        <td>${escapeHtml(slip.employeeName)}</td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>`
+}
+
 export function buildReportsPreviewHtml(sections: PdfReportSection[]): string {
   const grandTotal = sections.reduce(
     (sum, s) => sum + s.items.reduce((itemSum, i) => itemSum + i.amount, 0),

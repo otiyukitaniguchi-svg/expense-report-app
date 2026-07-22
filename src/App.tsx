@@ -130,7 +130,11 @@ function Shell(): JSX.Element {
 
       <main className="flex-1 overflow-auto">
         {view.name === 'reportStatus' && (
-          <ReportStatus userId={profile.id} onOpenReport={(id) => setView({ name: 'report', id })} />
+          <ReportStatus
+            userId={profile.id}
+            userName={profile.name}
+            onOpenReport={(id) => setView({ name: 'report', id })}
+          />
         )}
         {view.name === 'report' && (
           <ReportForm
