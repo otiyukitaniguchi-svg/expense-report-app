@@ -71,6 +71,17 @@ export function AdminSettings(): JSX.Element {
     refresh()
   }
 
+  async function deleteCategory(id: string): Promise<void> {
+    if (!window.confirm('この経費科目を削除しますか?')) return
+    setError(null)
+    const { error: deleteError } = await supabase.from('expense_categories').delete().eq('id', id)
+    if (deleteError) {
+      setError(deleteError.message)
+      return
+    }
+    refresh()
+  }
+
   if (loading) return <p className="p-8 text-sm text-gray-400">読み込み中…</p>
 
   return (
@@ -102,6 +113,7 @@ export function AdminSettings(): JSX.Element {
               <th className="p-4">経費科目</th>
               <th className="p-4">デフォルト税区分</th>
               <th className="p-4 text-right">状態</th>
+              <th className="p-4 text-right">削除</th>
             </tr>
           </thead>
           <tbody>
@@ -132,6 +144,14 @@ export function AdminSettings(): JSX.Element {
                     }`}
                   >
                     {c.is_active ? '有効' : '無効'}
+                  </button>
+                </td>
+                <td className="p-4 text-right">
+                  <button
+                    onClick={() => deleteCategory(c.id)}
+                    className="text-xs font-medium text-red-500 hover:text-red-700 hover:underline"
+                  >
+                    削除
                   </button>
                 </td>
               </tr>

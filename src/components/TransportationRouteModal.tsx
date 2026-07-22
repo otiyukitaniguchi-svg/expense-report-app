@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { seasonalIndexForDate, type AppSettings } from '../lib/useAppSettings'
 import type { TransportationRoute } from '../lib/types'
 
 interface Props {
   initialItem: TransportationRoute | null
-  fuelPricePerLiter: number
-  fuelEfficiencyKmPerLiter: number
-  seasonalIndex: number
+  settings: AppSettings
   onSave: (fields: Omit<TransportationRoute, 'id' | 'user_id' | 'created_at'>) => Promise<void>
   onClose: () => void
 }
@@ -14,26 +14,24 @@ const fieldClass =
   'w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 transition focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100'
 const labelClass = 'mb-1.5 block text-sm font-medium text-gray-700'
 
-export function TransportationRouteModal({
-  initialItem,
-  fuelPricePerLiter,
-  fuelEfficiencyKmPerLiter,
-  seasonalIndex,
-  onSave,
-  onClose
-}: Props): JSX.Element {
+export function TransportationRouteModal({ initialItem, settings, onSave, onClose }: Props): JSX.Element {
   const [date, setDate] = useState(initialItem?.date ?? new Date().toISOString().slice(0, 10))
   const [departure, setDeparture] = useState(initialItem?.departure ?? '')
   const [arrival, setArrival] = useState(initialItem?.arrival ?? '')
-  const [route, setRoute] = useState(initialItem?.route ?? '')
   const [distanceKm, setDistanceKm] = useState(initialItem?.distance_km ?? 0)
   const [memo, setMemo] = useState(initialItem?.memo ?? '')
   const [saving, setSaving] = useState(false)
+  const [calculating, setCalculating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [calcNote, setCalcNote] = useState<string | null>(null)
 
+  const activeSeasonalIndex = seasonalIndexForDate(date, settings)
   const computedAmount =
-    fuelEfficiencyKmPerLiter > 0
-      ? Math.round((distanceKm * fuelPricePerLiter * seasonalIndex) / fuelEfficiencyKmPerLiter)
+    settings.fuel_efficiency_km_per_liter > 0
+      ? Math.round(
+          (distanceKm * settings.fuel_price_per_liter * activeSeasonalIndex) /
+            settings.fuel_efficiency_km_per_liter
+        )
       : 0
 
   useEffect(() => {
@@ -43,6 +41,40 @@ export function TransportationRouteModal({
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose])
+
+  async function calculateDistance(): Promise<void> {
+    setError(null)
+    setCalcNote(null)
+    if (!departure.trim() || !arrival.trim()) {
+      setError('距離を自動計算するには、出発地・到着地を入力してください')
+      return
+    }
+    setCalculating(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData.session?.access_token
+      if (!accessToken) {
+        setError('セッションが切れています。再ログインしてください。')
+        return
+      }
+      const res = await fetch('/api/calculate-distance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ departure, arrival })
+      })
+      const body = await res.json()
+      if (!res.ok) {
+        setError(body.error ?? '距離の自動計算に失敗しました')
+        return
+      }
+      setDistanceKm(body.distanceKm)
+      setCalcNote(`${body.departureResolved} → ${body.arrivalResolved}`)
+    } catch {
+      setError('距離の自動計算に失敗しました。距離を手動で入力してください。')
+    } finally {
+      setCalculating(false)
+    }
+  }
 
   async function handleSubmit(): Promise<void> {
     setError(null)
@@ -55,7 +87,6 @@ export function TransportationRouteModal({
       date,
       departure: departure.trim(),
       arrival: arrival.trim(),
-      route: route.trim() || null,
       distance_km: distanceKm,
       amount: computedAmount,
       memo: memo.trim() || null
@@ -97,6 +128,7 @@ export function TransportationRouteModal({
               type="text"
               value={departure}
               onChange={(e) => setDeparture(e.target.value)}
+              placeholder="例: 那覇市役所"
               className={fieldClass}
             />
           </div>
@@ -106,21 +138,22 @@ export function TransportationRouteModal({
               type="text"
               value={arrival}
               onChange={(e) => setArrival(e.target.value)}
+              placeholder="例: 沖縄県庁"
               className={fieldClass}
             />
           </div>
           <div>
-            <label className={labelClass}>路線</label>
-            <input
-              type="text"
-              value={route}
-              onChange={(e) => setRoute(e.target.value)}
-              placeholder="例: JR山手線"
-              className={fieldClass}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>距離(km)</label>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className={labelClass}>距離(km)</label>
+              <button
+                type="button"
+                onClick={calculateDistance}
+                disabled={calculating}
+                className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-50"
+              >
+                {calculating ? '計算中…' : '距離を自動計算'}
+              </button>
+            </div>
             <input
               type="number"
               min={0}
@@ -129,12 +162,14 @@ export function TransportationRouteModal({
               onChange={(e) => setDistanceKm(Number(e.target.value) || 0)}
               className={fieldClass}
             />
+            {calcNote && <p className="mt-1 text-xs text-gray-400">{calcNote}</p>}
           </div>
           <div className="rounded-md bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
             交通費(自動計算): <span className="font-bold">{computedAmount.toLocaleString()} 円</span>
             <span className="ml-1 text-xs text-blue-500">
-              ({distanceKm}km × {fuelPricePerLiter}円/L ÷ {fuelEfficiencyKmPerLiter}km/L ×{' '}
-              {seasonalIndex})
+              ({distanceKm}km × {settings.fuel_price_per_liter}円/L ÷{' '}
+              {settings.fuel_efficiency_km_per_liter}km/L × {activeSeasonalIndex}
+              {Number(date.slice(5, 7)) >= 4 && Number(date.slice(5, 7)) <= 10 ? '・夏場' : '・冬場'})
             </span>
           </div>
           <div>

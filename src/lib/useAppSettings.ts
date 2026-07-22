@@ -6,7 +6,15 @@ export interface AppSettings {
   submission_end_day: number
   fuel_price_per_liter: number
   fuel_efficiency_km_per_liter: number
-  seasonal_index: number
+  seasonal_index_summer: number
+  seasonal_index_winter: number
+}
+
+// 4月〜10月は夏場、11月〜3月は冬場の季節指数を適用する
+export function seasonalIndexForDate(dateStr: string, settings: AppSettings): number {
+  const month = Number(dateStr.slice(5, 7))
+  const isSummer = month >= 4 && month <= 10
+  return isSummer ? settings.seasonal_index_summer : settings.seasonal_index_winter
 }
 
 export function useAppSettings(): {

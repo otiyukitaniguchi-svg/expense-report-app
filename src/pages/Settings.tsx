@@ -11,7 +11,8 @@ export function Settings(): JSX.Element {
   const [endDay, setEndDay] = useState(31)
   const [fuelPrice, setFuelPrice] = useState(170)
   const [fuelEfficiency, setFuelEfficiency] = useState(15)
-  const [seasonalIndex, setSeasonalIndex] = useState(1)
+  const [seasonalIndexSummer, setSeasonalIndexSummer] = useState(1)
+  const [seasonalIndexWinter, setSeasonalIndexWinter] = useState(1)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -21,7 +22,8 @@ export function Settings(): JSX.Element {
       setEndDay(settings.submission_end_day)
       setFuelPrice(settings.fuel_price_per_liter)
       setFuelEfficiency(settings.fuel_efficiency_km_per_liter)
-      setSeasonalIndex(settings.seasonal_index)
+      setSeasonalIndexSummer(settings.seasonal_index_summer)
+      setSeasonalIndexWinter(settings.seasonal_index_winter)
     }
   }, [settings])
 
@@ -35,7 +37,8 @@ export function Settings(): JSX.Element {
         submission_end_day: endDay,
         fuel_price_per_liter: fuelPrice,
         fuel_efficiency_km_per_liter: fuelEfficiency,
-        seasonal_index: seasonalIndex
+        seasonal_index_summer: seasonalIndexSummer,
+        seasonal_index_winter: seasonalIndexWinter
       })
       .eq('id', true)
     setSaving(false)
@@ -85,7 +88,7 @@ export function Settings(): JSX.Element {
         <p className="mb-4 text-sm text-gray-400">
           「交通費詳細」の距離(km)から、距離×単価÷燃費×季節指数 で金額を自動計算します。
         </p>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">単価(円/L)</label>
             <input
@@ -109,13 +112,28 @@ export function Settings(): JSX.Element {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">季節指数</label>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              季節指数(夏場: 4〜10月)
+            </label>
             <input
               type="number"
               min={0}
               step={0.01}
-              value={seasonalIndex}
-              onChange={(e) => setSeasonalIndex(Number(e.target.value))}
+              value={seasonalIndexSummer}
+              onChange={(e) => setSeasonalIndexSummer(Number(e.target.value))}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              季節指数(冬場: 11〜3月)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={seasonalIndexWinter}
+              onChange={(e) => setSeasonalIndexWinter(Number(e.target.value))}
               className={inputClass}
             />
           </div>

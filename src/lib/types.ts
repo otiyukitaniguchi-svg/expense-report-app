@@ -61,7 +61,6 @@ export interface TransportationRoute {
   date: string
   departure: string
   arrival: string
-  route: string | null
   distance_km: number
   amount: number
   memo: string | null

@@ -65,9 +65,6 @@ export function TransportationDetails({ userId }: Props): JSX.Element {
   }
 
   const total = routes.reduce((sum, r) => sum + Number(r.amount), 0)
-  const fuelPricePerLiter = settings?.fuel_price_per_liter ?? 170
-  const fuelEfficiencyKmPerLiter = settings?.fuel_efficiency_km_per_liter ?? 15
-  const seasonalIndex = settings?.seasonal_index ?? 1
 
   return (
     <div className="mx-auto max-w-6xl p-8">
@@ -92,7 +89,6 @@ export function TransportationDetails({ userId }: Props): JSX.Element {
                 <th className="p-2">日付</th>
                 <th className="p-2">出発地</th>
                 <th className="p-2">到着地</th>
-                <th className="p-2">路線</th>
                 <th className="p-2">距離(km)</th>
                 <th className="p-2">金額</th>
                 <th className="p-2">備考</th>
@@ -102,13 +98,13 @@ export function TransportationDetails({ userId }: Props): JSX.Element {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-sm text-gray-400">
+                  <td colSpan={7} className="p-6 text-center text-sm text-gray-400">
                     読み込み中…
                   </td>
                 </tr>
               ) : routes.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-sm text-gray-400">
+                  <td colSpan={7} className="p-6 text-center text-sm text-gray-400">
                     交通費詳細がまだありません。「+ 交通費詳細を追加」から入力してください。
                   </td>
                 </tr>
@@ -118,7 +114,6 @@ export function TransportationDetails({ userId }: Props): JSX.Element {
                     <td className="p-3 text-gray-700">{r.date}</td>
                     <td className="p-3 text-gray-700">{r.departure}</td>
                     <td className="p-3 text-gray-700">{r.arrival}</td>
-                    <td className="p-3 text-gray-700">{r.route ?? '-'}</td>
                     <td className="p-3 text-gray-700">{r.distance_km}</td>
                     <td className="p-3 text-gray-700">{Number(r.amount).toLocaleString()} 円</td>
                     <td className="p-3 text-gray-700">{r.memo ?? '-'}</td>
@@ -154,12 +149,10 @@ export function TransportationDetails({ userId }: Props): JSX.Element {
         </div>
       </div>
 
-      {modalState.mode !== 'closed' && (
+      {modalState.mode !== 'closed' && settings && (
         <TransportationRouteModal
           initialItem={modalState.mode === 'edit' ? modalState.item : null}
-          fuelPricePerLiter={fuelPricePerLiter}
-          fuelEfficiencyKmPerLiter={fuelEfficiencyKmPerLiter}
-          seasonalIndex={seasonalIndex}
+          settings={settings}
           onSave={saveRoute}
           onClose={() => setModalState({ mode: 'closed' })}
         />
