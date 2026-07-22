@@ -69,8 +69,9 @@ export function buildExpenseListHtml(rows: PdfListRow[], title: string): string 
 <head>
 <meta charset="UTF-8" />
 <style>
-  @page { size: A4 landscape; margin: 10mm; }
+  @page { size: A4 portrait; margin: 10mm; }
   ${PDF_STYLE}
+  th, td { padding: 6px 6px; font-size: 13px; word-break: break-all; }
 </style>
 </head>
 <body>
@@ -280,7 +281,7 @@ export function buildTransportationListHtml(
 <head>
 <meta charset="UTF-8" />
 <style>
-  @page { size: A4 landscape; margin: 10mm; }
+  @page { size: A4 portrait; margin: 10mm; }
   ${PDF_STYLE}
 </style>
 </head>
