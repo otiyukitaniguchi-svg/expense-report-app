@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createClient } from '@supabase/supabase-js'
+import { verifyAdmin } from './_lib/verifyAdmin'
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== 'POST') {
@@ -7,42 +7,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
 
-  const authHeader = req.headers.authorization
-  if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ error: '認証が必要です' })
+  const auth = await verifyAdmin(req)
+  if (!auth.ok) {
+    res.status(auth.status).json({ error: auth.error })
     return
   }
-  const accessToken = authHeader.slice('Bearer '.length)
-
-  const supabaseUrl = process.env.VITE_SUPABASE_URL
-  const anonKey = process.env.VITE_SUPABASE_ANON_KEY
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-    res.status(500).json({ error: 'サーバー環境変数(SUPABASE_SERVICE_ROLE_KEY等)が設定されていません' })
-    return
-  }
-
-  const callerClient = createClient(supabaseUrl, anonKey)
-  const { data: callerData, error: callerError } = await callerClient.auth.getUser(accessToken)
-  if (callerError || !callerData.user) {
-    res.status(401).json({ error: '認証に失敗しました' })
-    return
-  }
-
-  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  })
-
-  const { data: callerProfile, error: callerProfileError } = await adminClient
-    .from('profiles')
-    .select('role')
-    .eq('id', callerData.user.id)
-    .single()
-  if (callerProfileError || callerProfile?.role !== 'admin') {
-    res.status(403).json({ error: '管理者権限が必要です' })
-    return
-  }
+  const { adminClient } = auth
 
   const { email, password, name, role, departmentId } = (req.body ?? {}) as {
     email?: string

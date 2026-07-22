@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useDepartments } from '../lib/useDepartments'
+import { PasswordInput } from '../components/PasswordInput'
 import type { Profile, Role } from '../lib/types'
 
 const inputClass =
@@ -28,10 +29,33 @@ const emptyForm: NewEmployeeForm = {
   departmentId: ''
 }
 
+async function callAdminApi(path: string, body: unknown): Promise<{ ok: boolean; error?: string }> {
+  const { data: sessionData } = await supabase.auth.getSession()
+  const accessToken = sessionData.session?.access_token
+  if (!accessToken) {
+    return { ok: false, error: 'セッションが切れています。再ログインしてください。' }
+  }
+  try {
+    const res = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(body)
+    })
+    const responseBody = await res.json()
+    if (!res.ok) return { ok: false, error: responseBody.error ?? '処理に失敗しました' }
+    return { ok: true }
+  } catch {
+    return { ok: false, error: '通信に失敗しました。しばらくしてから再度お試しください。' }
+  }
+}
+
 export function EmployeeMaster(): JSX.Element {
   const { departments } = useDepartments()
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [names, setNames] = useState<Record<string, string>>({})
+  const [newPasswords, setNewPasswords] = useState<Record<string, string>>({})
+  const [changingPasswordFor, setChangingPasswordFor] = useState<string | null>(null)
+  const [passwordMessage, setPasswordMessage] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState<NewEmployeeForm>(emptyForm)
   const [creating, setCreating] = useState(false)
@@ -84,35 +108,35 @@ export function EmployeeMaster(): JSX.Element {
       return
     }
     setCreating(true)
-    try {
-      const { data: sessionData } = await supabase.auth.getSession()
-      const accessToken = sessionData.session?.access_token
-      if (!accessToken) {
-        setError('セッションが切れています。再ログインしてください。')
-        return
-      }
-      const res = await fetch('/api/create-employee', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({
-          email: form.email.trim(),
-          password: form.password,
-          name: form.name.trim(),
-          role: form.role,
-          departmentId: form.departmentId || null
-        })
-      })
-      const body = await res.json()
-      if (!res.ok) {
-        setError(body.error ?? '社員の追加に失敗しました')
-        return
-      }
-      setForm(emptyForm)
-      load()
-    } catch {
-      setError('社員の追加に失敗しました。しばらくしてから再度お試しください。')
-    } finally {
-      setCreating(false)
+    const result = await callAdminApi('/api/create-employee', {
+      email: form.email.trim(),
+      password: form.password,
+      name: form.name.trim(),
+      role: form.role,
+      departmentId: form.departmentId || null
+    })
+    setCreating(false)
+    if (!result.ok) {
+      setError(result.error ?? '社員の追加に失敗しました')
+      return
+    }
+    setForm(emptyForm)
+    load()
+  }
+
+  async function changePassword(id: string): Promise<void> {
+    const password = newPasswords[id]
+    if (!password) return
+    setChangingPasswordFor(id)
+    setPasswordMessage((prev) => ({ ...prev, [id]: '' }))
+    const result = await callAdminApi('/api/update-employee-password', { userId: id, password })
+    setChangingPasswordFor(null)
+    setPasswordMessage((prev) => ({
+      ...prev,
+      [id]: result.ok ? '変更しました' : (result.error ?? '変更に失敗しました')
+    }))
+    if (result.ok) {
+      setNewPasswords((prev) => ({ ...prev, [id]: '' }))
     }
   }
 
@@ -139,8 +163,7 @@ export function EmployeeMaster(): JSX.Element {
             placeholder="メールアドレス(社内管理用。ログインは氏名で行います)"
             className={inputClass}
           />
-          <input
-            type="password"
+          <PasswordInput
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             placeholder="パスワード(6文字以上)"
@@ -187,6 +210,7 @@ export function EmployeeMaster(): JSX.Element {
               <th className="p-4">役割</th>
               <th className="p-4">部署</th>
               <th className="p-4">承認者</th>
+              <th className="p-4">パスワード変更</th>
             </tr>
           </thead>
           <tbody>
@@ -230,6 +254,34 @@ export function EmployeeMaster(): JSX.Element {
                     </select>
                   </td>
                   <td className="p-4 text-gray-500">{manager?.name ?? '-'}</td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      <PasswordInput
+                        value={newPasswords[p.id] ?? ''}
+                        onChange={(e) =>
+                          setNewPasswords({ ...newPasswords, [p.id]: e.target.value })
+                        }
+                        placeholder="新しいパスワード"
+                        className={`${inputClass} w-36`}
+                      />
+                      <button
+                        onClick={() => changePassword(p.id)}
+                        disabled={changingPasswordFor === p.id || !newPasswords[p.id]}
+                        className="whitespace-nowrap rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+                      >
+                        {changingPasswordFor === p.id ? '変更中…' : '変更'}
+                      </button>
+                    </div>
+                    {passwordMessage[p.id] && (
+                      <p
+                        className={`mt-1 text-xs ${
+                          passwordMessage[p.id] === '変更しました' ? 'text-emerald-600' : 'text-red-500'
+                        }`}
+                      >
+                        {passwordMessage[p.id]}
+                      </p>
+                    )}
+                  </td>
                 </tr>
               )
             })}

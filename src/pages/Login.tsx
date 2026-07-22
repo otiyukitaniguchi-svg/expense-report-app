@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { PasswordInput } from '../components/PasswordInput'
 
 export function Login(): JSX.Element {
   const { signIn } = useAuth()
@@ -36,12 +37,12 @@ export function Login(): JSX.Element {
           className="mb-5 w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 transition focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
         />
         <label className="mb-1.5 block text-sm font-medium text-gray-700">パスワード</label>
-        <input
-          type="password"
+        <PasswordInput
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mb-5 w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 transition focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
+          wrapperClassName="mb-5"
+          className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 transition focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
         />
         {error && (
           <p className="mb-5 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
