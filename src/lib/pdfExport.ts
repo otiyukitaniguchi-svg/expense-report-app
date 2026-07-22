@@ -176,8 +176,9 @@ export function buildSingleReportSlipHtml(slip: SingleReportSlip): string {
   tfoot td { font-weight: 800; background: #e2e2e2; font-size: 17px; }
   .category-table { width: 60%; }
   .category-table th { background: #555; }
-  .approval-table th { background: #000; color: #fff; text-align: center; font-size: 15px; }
-  .approval-table td { height: 74px; vertical-align: top; text-align: center; font-weight: 700; }
+  .approval-table { width: 70mm; margin-left: auto; table-layout: fixed; }
+  .approval-table th { background: #000; color: #fff; text-align: center; font-size: 15px; width: 33.33%; }
+  .approval-table td { height: 34mm; vertical-align: top; text-align: center; }
 </style>
 </head>
 <body>
@@ -228,8 +229,6 @@ export function buildSingleReportSlipHtml(slip: SingleReportSlip): string {
   <table class="approval-table">
     <thead>
       <tr>
-        <th style="background:#fff;border:none;"></th>
-        <th style="background:#fff;border:none;"></th>
         <th>承認</th>
         <th>確認</th>
         <th>申請</th>
@@ -237,11 +236,9 @@ export function buildSingleReportSlipHtml(slip: SingleReportSlip): string {
     </thead>
     <tbody>
       <tr>
-        <td style="border:none;"></td>
-        <td style="border:none;"></td>
         <td></td>
         <td></td>
-        <td>${escapeHtml(slip.employeeName)}</td>
+        <td></td>
       </tr>
     </tbody>
   </table>
