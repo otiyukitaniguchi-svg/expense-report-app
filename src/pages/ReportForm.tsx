@@ -38,13 +38,20 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
     }
     let active = true
     async function resolveMonthReport(): Promise<void> {
-      const { data: existing } = await supabase
+      const { data: existing, error: selectError } = await supabase
         .from('expense_reports')
         .select('id')
         .eq('user_id', userId)
         .eq('report_month', selectedMonth)
         .eq('status', 'draft')
         .maybeSingle()
+      if (selectError) {
+        if (active) {
+          setError(selectError.message)
+          setLoading(false)
+        }
+        return
+      }
       if (existing) {
         if (active) setReportId(existing.id)
         return
@@ -60,7 +67,10 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
         .select('id')
         .single()
       if (insertError) {
-        if (active) setError(insertError.message)
+        if (active) {
+          setError(insertError.message)
+          setLoading(false)
+        }
         return
       }
       if (active) setReportId(created.id)
@@ -173,6 +183,16 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
     onDone()
   }
 
+  if (error && !report) {
+    return (
+      <div className="p-8">
+        <button onClick={onDone} className="mb-4 text-sm text-blue-600 hover:underline">
+          &lt; 一覧に戻る
+        </button>
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+      </div>
+    )
+  }
   if (loading || !report) return <p className="p-8 text-sm text-gray-400">読み込み中…</p>
 
   return (
