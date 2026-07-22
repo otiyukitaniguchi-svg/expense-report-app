@@ -38,6 +38,7 @@ export interface ExpenseReport {
   approved_at: string | null
   total_amount: number
   created_at: string
+  report_month: string | null
 }
 
 export interface ExpenseItem {

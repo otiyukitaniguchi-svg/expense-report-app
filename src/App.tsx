@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { Login } from './pages/Login'
-import { Drafts } from './pages/Drafts'
 import { ReportStatus } from './pages/ReportStatus'
 import { ReportForm } from './pages/ReportForm'
 import { Approvals } from './pages/Approvals'
@@ -10,11 +9,11 @@ import { EmployeeMaster } from './pages/EmployeeMaster'
 import { DepartmentMaster } from './pages/DepartmentMaster'
 import { Settings } from './pages/Settings'
 import otiLogo from './assets/oti-logo.png'
+import { currentMonthStr } from './lib/month'
 
 type View =
-  | { name: 'drafts' }
   | { name: 'reportStatus' }
-  | { name: 'report'; id: string | null }
+  | { name: 'report'; id: string | null; month?: string }
   | { name: 'approvals' }
   | { name: 'admin' }
   | { name: 'employees' }
@@ -46,7 +45,7 @@ function NavItem({
 
 function Shell(): JSX.Element {
   const { session, profile, loading, signOut } = useAuth()
-  const [view, setView] = useState<View>({ name: 'drafts' })
+  const [view, setView] = useState<View>({ name: 'report', id: null, month: currentMonthStr() })
 
   if (loading) {
     return (
@@ -74,12 +73,7 @@ function Shell(): JSX.Element {
           <NavItem
             label="新規登録"
             active={isNewReportView}
-            onClick={() => setView({ name: 'report', id: null })}
-          />
-          <NavItem
-            label="申請"
-            active={view.name === 'drafts'}
-            onClick={() => setView({ name: 'drafts' })}
+            onClick={() => setView({ name: 'report', id: null, month: currentMonthStr() })}
           />
           <NavItem
             label="申請状況"
@@ -135,13 +129,6 @@ function Shell(): JSX.Element {
       </aside>
 
       <main className="flex-1 overflow-auto">
-        {view.name === 'drafts' && (
-          <Drafts
-            userId={profile.id}
-            userName={profile.name}
-            onOpenReport={(id) => setView({ name: 'report', id })}
-          />
-        )}
         {view.name === 'reportStatus' && (
           <ReportStatus userId={profile.id} onOpenReport={(id) => setView({ name: 'report', id })} />
         )}
@@ -149,7 +136,8 @@ function Shell(): JSX.Element {
           <ReportForm
             userId={profile.id}
             reportId={view.id}
-            onDone={() => setView({ name: 'drafts' })}
+            month={view.month}
+            onDone={() => setView({ name: 'reportStatus' })}
           />
         )}
         {view.name === 'approvals' && (

@@ -2,66 +2,99 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useLookups } from '../lib/useLookups'
 import { useAppSettings } from '../lib/useAppSettings'
-import { ExpenseItemRow } from '../components/ExpenseItemRow'
 import { StatusBadge } from '../components/StatusBadge'
+import { ExpenseItemModal } from '../components/ExpenseItemModal'
+import { currentMonthStr, formatMonthLabel, recentMonths } from '../lib/month'
 import type { ExpenseItem, ExpenseReport } from '../lib/types'
 
 interface Props {
   userId: string
   reportId: string | null
+  month?: string
   onDone: () => void
 }
 
-function emptyItem(reportId: string): ExpenseItem {
-  return {
-    id: crypto.randomUUID(),
-    report_id: reportId,
-    date: new Date().toISOString().slice(0, 10),
-    category_id: null,
-    tax_category_id: null,
-    amount: 0,
-    description: '',
-    payee: null,
-    invoice_number: null
-  }
-}
+type ModalState = { mode: 'closed' } | { mode: 'create' } | { mode: 'edit'; item: ExpenseItem }
 
-export function ReportForm({ userId, reportId, onDone }: Props): JSX.Element {
+export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: Props): JSX.Element {
   const { categories, taxCategories } = useLookups()
   const { settings } = useAppSettings()
+  const [selectedMonth, setSelectedMonth] = useState(month ?? currentMonthStr())
+  const [reportId, setReportId] = useState<string | null>(fixedReportId)
   const [report, setReport] = useState<ExpenseReport | null>(null)
   const [items, setItems] = useState<ExpenseItem[]>([])
   const [title, setTitle] = useState('')
   const [loading, setLoading] = useState(true)
+  const [modalState, setModalState] = useState<ModalState>({ mode: 'closed' })
   const [error, setError] = useState<string | null>(null)
 
+  const isMonthMode = !fixedReportId
+
+  // 月モード(新規登録)の場合、選択した月の下書きをfind-or-create
   useEffect(() => {
-    async function load(): Promise<void> {
-      if (reportId) {
-        const [{ data: reportData }, { data: itemsData }] = await Promise.all([
-          supabase.from('expense_reports').select('*').eq('id', reportId).single(),
-          supabase.from('expense_items').select('*').eq('report_id', reportId).order('date')
-        ])
-        setReport(reportData as ExpenseReport)
-        setTitle((reportData as ExpenseReport)?.title ?? '')
-        setItems((itemsData as ExpenseItem[]) ?? [])
-      } else {
-        const { data, error: insertError } = await supabase
-          .from('expense_reports')
-          .insert({ user_id: userId, title: '新規申請', status: 'draft' })
-          .select()
-          .single()
-        if (insertError) {
-          setError(insertError.message)
-        } else {
-          setReport(data as ExpenseReport)
-          setTitle((data as ExpenseReport).title)
-        }
+    if (fixedReportId) {
+      setReportId(fixedReportId)
+      return
+    }
+    let active = true
+    async function resolveMonthReport(): Promise<void> {
+      const { data: existing } = await supabase
+        .from('expense_reports')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('report_month', selectedMonth)
+        .eq('status', 'draft')
+        .maybeSingle()
+      if (existing) {
+        if (active) setReportId(existing.id)
+        return
       }
+      const { data: created, error: insertError } = await supabase
+        .from('expense_reports')
+        .insert({
+          user_id: userId,
+          title: formatMonthLabel(selectedMonth),
+          status: 'draft',
+          report_month: selectedMonth
+        })
+        .select('id')
+        .single()
+      if (insertError) {
+        if (active) setError(insertError.message)
+        return
+      }
+      if (active) setReportId(created.id)
+    }
+    resolveMonthReport()
+    return () => {
+      active = false
+    }
+  }, [fixedReportId, selectedMonth, userId])
+
+  async function loadItems(id: string): Promise<void> {
+    const { data } = await supabase.from('expense_items').select('*').eq('report_id', id).order('date')
+    setItems((data as ExpenseItem[]) ?? [])
+  }
+
+  useEffect(() => {
+    if (!reportId) return
+    let active = true
+    async function load(): Promise<void> {
+      setLoading(true)
+      const [{ data: reportData }, { data: itemsData }] = await Promise.all([
+        supabase.from('expense_reports').select('*').eq('id', reportId).single(),
+        supabase.from('expense_items').select('*').eq('report_id', reportId).order('date')
+      ])
+      if (!active) return
+      setReport(reportData as ExpenseReport)
+      setTitle((reportData as ExpenseReport)?.title ?? '')
+      setItems((itemsData as ExpenseItem[]) ?? [])
       setLoading(false)
     }
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      active = false
+    }
   }, [reportId])
 
   const readOnly = report?.status !== 'draft'
@@ -70,31 +103,43 @@ export function ReportForm({ userId, reportId, onDone }: Props): JSX.Element {
   const withinSubmissionPeriod =
     !settings || (dayOfMonth >= settings.submission_start_day && dayOfMonth <= settings.submission_end_day)
 
+  const categoryNameById = new Map(categories.map((c) => [c.id, c.name]))
+  const taxNameById = new Map(taxCategories.map((t) => [t.id, t.name]))
+
   async function saveTitle(): Promise<void> {
     if (!report) return
     await supabase.from('expense_reports').update({ title }).eq('id', report.id)
   }
 
-  async function addItem(): Promise<void> {
+  async function saveItem(fields: Omit<ExpenseItem, 'id' | 'report_id'>): Promise<void> {
     if (!report) return
-    const item = emptyItem(report.id)
-    const { error: insertError } = await supabase.from('expense_items').insert(item)
-    if (insertError) {
-      setError(insertError.message)
-      return
+    setError(null)
+    if (modalState.mode === 'create') {
+      const newItem: ExpenseItem = { id: crypto.randomUUID(), report_id: report.id, ...fields }
+      const { error: insertError } = await supabase.from('expense_items').insert(newItem)
+      if (insertError) {
+        setError(insertError.message)
+        return
+      }
+    } else if (modalState.mode === 'edit') {
+      const { error: updateError } = await supabase
+        .from('expense_items')
+        .update(fields)
+        .eq('id', modalState.item.id)
+      if (updateError) {
+        setError(updateError.message)
+        return
+      }
     }
-    setItems((prev) => [...prev, item])
-  }
-
-  async function updateItem(updated: ExpenseItem): Promise<void> {
-    setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))
-    const { id, ...fields } = updated
-    await supabase.from('expense_items').update(fields).eq('id', id)
+    setModalState({ mode: 'closed' })
+    loadItems(report.id)
   }
 
   async function removeItem(id: string): Promise<void> {
+    if (!window.confirm('この明細を削除しますか?')) return
+    if (!report) return
     await supabase.from('expense_items').delete().eq('id', id)
-    setItems((prev) => prev.filter((i) => i.id !== id))
+    loadItems(report.id)
   }
 
   async function submitReport(): Promise<void> {
@@ -128,8 +173,7 @@ export function ReportForm({ userId, reportId, onDone }: Props): JSX.Element {
     onDone()
   }
 
-  if (loading) return <p className="p-8 text-sm text-gray-400">読み込み中…</p>
-  if (!report) return <p className="p-8 text-sm text-red-600">{error ?? '申請が見つかりません'}</p>
+  if (loading || !report) return <p className="p-8 text-sm text-gray-400">読み込み中…</p>
 
   return (
     <div className="mx-auto max-w-6xl p-8">
@@ -140,7 +184,7 @@ export function ReportForm({ userId, reportId, onDone }: Props): JSX.Element {
         &lt; 一覧に戻る
       </button>
 
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <input
           value={title}
           disabled={readOnly}
@@ -149,6 +193,19 @@ export function ReportForm({ userId, reportId, onDone }: Props): JSX.Element {
           className="w-80 rounded-md border border-transparent bg-transparent px-1 text-2xl font-bold text-gray-900 transition focus:border-blue-300 focus:bg-blue-50/40 focus:outline-none disabled:text-gray-900"
         />
         <StatusBadge status={report.status} />
+        {isMonthMode && (
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700"
+          >
+            {recentMonths(12).map((m) => (
+              <option key={m} value={m}>
+                {formatMonthLabel(m)}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {error && (
@@ -167,20 +224,42 @@ export function ReportForm({ userId, reportId, onDone }: Props): JSX.Element {
                 <th className="p-2">支払先</th>
                 <th className="p-2">インボイス登録番号</th>
                 <th className="p-2">摘要</th>
-                {!readOnly && <th className="p-2" />}
+                <th className="p-2 text-right">操作</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item) => (
-                <ExpenseItemRow
-                  key={item.id}
-                  item={item}
-                  categories={categories.filter((c) => c.is_active)}
-                  taxCategories={taxCategories}
-                  readOnly={readOnly}
-                  onChange={updateItem}
-                  onRemove={() => removeItem(item.id)}
-                />
+                <tr key={item.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
+                  <td className="p-3 text-gray-700">{item.date}</td>
+                  <td className="p-3 text-gray-700">
+                    {(item.category_id && categoryNameById.get(item.category_id)) ?? '-'}
+                  </td>
+                  <td className="p-3 text-gray-700">
+                    {(item.tax_category_id && taxNameById.get(item.tax_category_id)) ?? '-'}
+                  </td>
+                  <td className="p-3 text-gray-700">{Number(item.amount).toLocaleString()} 円</td>
+                  <td className="p-3 text-gray-700">{item.payee ?? '-'}</td>
+                  <td className="p-3 text-gray-700">{item.invoice_number ?? '-'}</td>
+                  <td className="p-3 text-gray-700">{item.description || '-'}</td>
+                  <td className="p-3">
+                    {!readOnly && (
+                      <div className="flex justify-end gap-3">
+                        <button
+                          onClick={() => setModalState({ mode: 'edit', item })}
+                          className="text-xs font-medium text-blue-600 hover:underline"
+                        >
+                          編集
+                        </button>
+                        <button
+                          onClick={() => removeItem(item.id)}
+                          className="text-xs font-medium text-red-500 hover:text-red-700 hover:underline"
+                        >
+                          削除
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
               ))}
               {items.length === 0 && (
                 <tr>
@@ -195,7 +274,7 @@ export function ReportForm({ userId, reportId, onDone }: Props): JSX.Element {
 
         {!readOnly && (
           <button
-            onClick={addItem}
+            onClick={() => setModalState({ mode: 'create' })}
             className="mt-4 rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
           >
             + 明細を追加
@@ -240,6 +319,16 @@ export function ReportForm({ userId, reportId, onDone }: Props): JSX.Element {
           </div>
         )}
       </div>
+
+      {modalState.mode !== 'closed' && (
+        <ExpenseItemModal
+          initialItem={modalState.mode === 'edit' ? modalState.item : null}
+          categories={categories.filter((c) => c.is_active)}
+          taxCategories={taxCategories}
+          onSave={saveItem}
+          onClose={() => setModalState({ mode: 'closed' })}
+        />
+      )}
     </div>
   )
 }
