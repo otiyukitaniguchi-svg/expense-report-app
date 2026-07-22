@@ -191,38 +191,14 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
         return
       }
       setSubmitting(true)
-      const totalSelected = selectedItems.reduce((sum, i) => sum + Number(i.amount), 0)
-      const { data: newReport, error: createError } = await supabase
-        .from('expense_reports')
-        .insert({
-          user_id: userId,
-          title,
-          status: 'submitted',
-          submitted_at: new Date().toISOString(),
-          total_amount: totalSelected,
-          report_month: report.report_month
-        })
-        .select('id')
-        .single()
-      if (createError) {
-        setSubmitting(false)
-        setError(createError.message)
-        return
-      }
-      const { error: moveError } = await supabase
-        .from('expense_items')
-        .update({ report_id: newReport.id })
-        .in('id', Array.from(selectedItemIds))
-      if (moveError) {
-        setSubmitting(false)
-        setError(moveError.message)
-        return
-      }
-      const remainingTotal = items
-        .filter((i) => !selectedItemIds.has(i.id))
-        .reduce((sum, i) => sum + Number(i.amount), 0)
-      await supabase.from('expense_reports').update({ total_amount: remainingTotal }).eq('id', report.id)
+      const { error: rpcError } = await supabase.rpc('submit_selected_items', {
+        p_item_ids: Array.from(selectedItemIds)
+      })
       setSubmitting(false)
+      if (rpcError) {
+        setError(rpcError.message)
+        return
+      }
       setSuccessMessage(`${selectedItems.length}件を提出しました。`)
       loadItems(report.id)
       return
