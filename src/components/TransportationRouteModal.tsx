@@ -26,13 +26,9 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
   const [calcNote, setCalcNote] = useState<string | null>(null)
 
   const activeSeasonalIndex = seasonalIndexForDate(date, settings)
+  const denominator = settings.fuel_efficiency_km_per_liter * activeSeasonalIndex
   const computedAmount =
-    settings.fuel_efficiency_km_per_liter > 0
-      ? Math.round(
-          (distanceKm * settings.fuel_price_per_liter * activeSeasonalIndex) /
-            settings.fuel_efficiency_km_per_liter
-        )
-      : 0
+    denominator > 0 ? Math.round((distanceKm * settings.fuel_price_per_liter) / denominator) : 0
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent): void {
@@ -167,8 +163,8 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
           <div className="rounded-md bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
             交通費(自動計算): <span className="font-bold">{computedAmount.toLocaleString()} 円</span>
             <span className="ml-1 text-xs text-blue-500">
-              ({distanceKm}km × {settings.fuel_price_per_liter}円/L ÷{' '}
-              {settings.fuel_efficiency_km_per_liter}km/L × {activeSeasonalIndex}
+              ({distanceKm}km × {settings.fuel_price_per_liter}円/L ÷ ({settings.fuel_efficiency_km_per_liter}
+              km/L × {activeSeasonalIndex})
               {Number(date.slice(5, 7)) >= 4 && Number(date.slice(5, 7)) <= 10 ? '・夏場' : '・冬場'})
             </span>
           </div>
