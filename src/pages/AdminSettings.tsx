@@ -26,15 +26,28 @@ export function AdminSettings(): JSX.Element {
   }
 
   async function toggleCategoryActive(id: string, isActive: boolean): Promise<void> {
-    await supabase.from('expense_categories').update({ is_active: !isActive }).eq('id', id)
+    setError(null)
+    const { error: updateError } = await supabase
+      .from('expense_categories')
+      .update({ is_active: !isActive })
+      .eq('id', id)
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
     refresh()
   }
 
   async function setDefaultTax(id: string, taxCategoryId: string): Promise<void> {
-    await supabase
+    setError(null)
+    const { error: updateError } = await supabase
       .from('expense_categories')
       .update({ default_tax_category_id: taxCategoryId || null })
       .eq('id', id)
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
     refresh()
   }
 
