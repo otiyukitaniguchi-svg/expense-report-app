@@ -10,9 +10,20 @@ interface Props {
   onClose: () => void
 }
 
+interface GeoCandidate {
+  label: string
+  lat: number
+  lon: number
+}
+
 const fieldClass =
   'w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 transition focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100'
 const labelClass = 'mb-1.5 block text-sm font-medium text-gray-700'
+
+async function getAccessToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token ?? null
+}
 
 export function TransportationRouteModal({ initialItem, settings, onSave, onClose }: Props): JSX.Element {
   const [date, setDate] = useState(initialItem?.date ?? new Date().toISOString().slice(0, 10))
@@ -21,14 +32,19 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
   const [distanceKm, setDistanceKm] = useState(initialItem?.distance_km ?? 0)
   const [memo, setMemo] = useState(initialItem?.memo ?? '')
   const [saving, setSaving] = useState(false)
+  const [searching, setSearching] = useState(false)
   const [calculating, setCalculating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [calcNote, setCalcNote] = useState<string | null>(null)
+
+  const [departureCandidates, setDepartureCandidates] = useState<GeoCandidate[]>([])
+  const [arrivalCandidates, setArrivalCandidates] = useState<GeoCandidate[]>([])
+  const [selectedDepartureIdx, setSelectedDepartureIdx] = useState(0)
+  const [selectedArrivalIdx, setSelectedArrivalIdx] = useState(0)
 
   const activeSeasonalIndex = seasonalIndexForDate(date, settings)
   const denominator = settings.fuel_efficiency_km_per_liter * activeSeasonalIndex
   const computedAmount =
-    denominator > 0 ? Math.round((distanceKm * settings.fuel_price_per_liter) / denominator) : 0
+    denominator > 0 ? Math.ceil((distanceKm * settings.fuel_price_per_liter) / denominator) : 0
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent): void {
@@ -38,17 +54,57 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose])
 
-  async function calculateDistance(): Promise<void> {
+  async function geocode(query: string): Promise<GeoCandidate[]> {
+    const accessToken = await getAccessToken()
+    if (!accessToken) throw new Error('セッションが切れています。再ログインしてください。')
+    const res = await fetch('/api/geocode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ query })
+    })
+    const body = await res.json()
+    if (!res.ok) throw new Error(body.error ?? '地名検索に失敗しました')
+    return body.candidates as GeoCandidate[]
+  }
+
+  async function searchCandidates(): Promise<void> {
     setError(null)
-    setCalcNote(null)
+    setDepartureCandidates([])
+    setArrivalCandidates([])
     if (!departure.trim() || !arrival.trim()) {
-      setError('距離を自動計算するには、出発地・到着地を入力してください')
+      setError('候補を検索するには、出発地・到着地を入力してください')
       return
     }
+    setSearching(true)
+    try {
+      const [fromResults, toResults] = await Promise.all([geocode(departure), geocode(arrival)])
+      if (fromResults.length === 0) {
+        setError(`出発地「${departure}」の候補が見つかりませんでした。より具体的に入力してください。`)
+        return
+      }
+      if (toResults.length === 0) {
+        setError(`到着地「${arrival}」の候補が見つかりませんでした。より具体的に入力してください。`)
+        return
+      }
+      setDepartureCandidates(fromResults)
+      setArrivalCandidates(toResults)
+      setSelectedDepartureIdx(0)
+      setSelectedArrivalIdx(0)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '候補の検索に失敗しました')
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  async function calculateDistance(): Promise<void> {
+    setError(null)
+    const from = departureCandidates[selectedDepartureIdx]
+    const to = arrivalCandidates[selectedArrivalIdx]
+    if (!from || !to) return
     setCalculating(true)
     try {
-      const { data: sessionData } = await supabase.auth.getSession()
-      const accessToken = sessionData.session?.access_token
+      const accessToken = await getAccessToken()
       if (!accessToken) {
         setError('セッションが切れています。再ログインしてください。')
         return
@@ -56,7 +112,7 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
       const res = await fetch('/api/calculate-distance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ departure, arrival })
+        body: JSON.stringify({ fromLat: from.lat, fromLon: from.lon, toLat: to.lat, toLon: to.lon })
       })
       const body = await res.json()
       if (!res.ok) {
@@ -64,7 +120,6 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
         return
       }
       setDistanceKm(body.distanceKm)
-      setCalcNote(`${body.departureResolved} → ${body.arrivalResolved}`)
     } catch {
       setError('距離の自動計算に失敗しました。距離を手動で入力してください。')
     } finally {
@@ -138,18 +193,61 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
               className={fieldClass}
             />
           </div>
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label className={labelClass}>距離(km)</label>
-              <button
-                type="button"
-                onClick={calculateDistance}
-                disabled={calculating}
-                className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-50"
+
+          <button
+            type="button"
+            onClick={searchCandidates}
+            disabled={searching}
+            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+          >
+            {searching ? '検索中…' : '候補を検索'}
+          </button>
+
+          {departureCandidates.length > 0 && (
+            <div>
+              <label className={labelClass}>出発地の候補</label>
+              <select
+                value={selectedDepartureIdx}
+                onChange={(e) => setSelectedDepartureIdx(Number(e.target.value))}
+                className={fieldClass}
               >
-                {calculating ? '計算中…' : '距離を自動計算'}
-              </button>
+                {departureCandidates.map((c, i) => (
+                  <option key={i} value={i}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
             </div>
+          )}
+          {arrivalCandidates.length > 0 && (
+            <div>
+              <label className={labelClass}>到着地の候補</label>
+              <select
+                value={selectedArrivalIdx}
+                onChange={(e) => setSelectedArrivalIdx(Number(e.target.value))}
+                className={fieldClass}
+              >
+                {arrivalCandidates.map((c, i) => (
+                  <option key={i} value={i}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {departureCandidates.length > 0 && arrivalCandidates.length > 0 && (
+            <button
+              type="button"
+              onClick={calculateDistance}
+              disabled={calculating}
+              className="w-full rounded-md bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
+            >
+              {calculating ? '計算中…' : 'この地点で距離を計算'}
+            </button>
+          )}
+
+          <div>
+            <label className={labelClass}>距離(km)</label>
             <input
               type="number"
               min={0}
@@ -158,7 +256,6 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
               onChange={(e) => setDistanceKm(Number(e.target.value) || 0)}
               className={fieldClass}
             />
-            {calcNote && <p className="mt-1 text-xs text-gray-400">{calcNote}</p>}
           </div>
           <div className="rounded-md bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
             交通費(自動計算): <span className="font-bold">{computedAmount.toLocaleString()} 円</span>
