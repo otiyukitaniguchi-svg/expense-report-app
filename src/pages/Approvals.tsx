@@ -156,14 +156,16 @@ export function Approvals({ managerId, onOpenReport }: Props): JSX.Element {
                   </td>
                   <td className="p-4 text-gray-700">{r.total_amount.toLocaleString()} 円</td>
                   <td className="p-4">
-                    {r.status === 'submitted' && (
+                    {(r.status === 'submitted' || r.status === 'approved') && (
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => decide(r.id, true)}
-                          className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-emerald-700"
-                        >
-                          承認
-                        </button>
+                        {r.status === 'submitted' && (
+                          <button
+                            onClick={() => decide(r.id, true)}
+                            className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-emerald-700"
+                          >
+                            承認
+                          </button>
+                        )}
                         <button
                           onClick={() => decide(r.id, false)}
                           className="rounded-md bg-red-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-red-600"

@@ -109,13 +109,18 @@ export function ExpenseItemModal({ initialItem, categories, onSave, onClose }: P
           </div>
           <div>
             <label className={labelClass}>金額</label>
-            <input
-              type="number"
-              min={0}
-              value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
-              className={fieldClass}
-            />
+            <div className="relative">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={amount ? amount.toLocaleString() : ''}
+                onChange={(e) => setAmount(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                className={`${fieldClass} pr-10 text-right`}
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                円
+              </span>
+            </div>
           </div>
           <div>
             <label className={labelClass}>支払先</label>

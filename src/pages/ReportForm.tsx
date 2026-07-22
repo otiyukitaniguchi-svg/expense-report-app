@@ -26,6 +26,9 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
   const [title, setTitle] = useState('')
   const [loading, setLoading] = useState(true)
   const [modalState, setModalState] = useState<ModalState>({ mode: 'closed' })
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
+  const [submitting, setSubmitting] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const isMonthMode = !fixedReportId
@@ -84,6 +87,20 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
   async function loadItems(id: string): Promise<void> {
     const { data } = await supabase.from('expense_items').select('*').eq('report_id', id).order('date')
     setItems((data as ExpenseItem[]) ?? [])
+    setSelectedItemIds(new Set())
+  }
+
+  function toggleItemSelected(id: string): void {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll(): void {
+    setSelectedItemIds((prev) => (prev.size === items.length ? new Set() : new Set(items.map((i) => i.id))))
   }
 
   useEffect(() => {
@@ -107,7 +124,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
     }
   }, [reportId])
 
-  const readOnly = report?.status !== 'draft'
+  const readOnly = report?.status === 'submitted' || report?.status === 'approved'
   const total = items.reduce((sum, item) => sum + Number(item.amount || 0), 0)
   const dayOfMonth = new Date().getDate()
   const withinSubmissionPeriod =
@@ -154,12 +171,63 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
 
   async function submitReport(): Promise<void> {
     if (!report) return
+    setError(null)
+    setSuccessMessage(null)
     if (!withinSubmissionPeriod && settings) {
       setError(
         `提出可能期間(${settings.submission_start_day}日〜${settings.submission_end_day}日)外のため、提出できません。`
       )
       return
     }
+
+    if (isMonthMode) {
+      if (selectedItemIds.size === 0) {
+        setError('提出する明細をチェックボックスで選択してください。')
+        return
+      }
+      const selectedItems = items.filter((i) => selectedItemIds.has(i.id))
+      if (selectedItems.some((i) => !i.category_id || !i.tax_category_id || i.amount <= 0)) {
+        setError('選択した明細に経費科目・税区分・金額が未設定のものがあります。')
+        return
+      }
+      setSubmitting(true)
+      const totalSelected = selectedItems.reduce((sum, i) => sum + Number(i.amount), 0)
+      const { data: newReport, error: createError } = await supabase
+        .from('expense_reports')
+        .insert({
+          user_id: userId,
+          title,
+          status: 'submitted',
+          submitted_at: new Date().toISOString(),
+          total_amount: totalSelected,
+          report_month: report.report_month
+        })
+        .select('id')
+        .single()
+      if (createError) {
+        setSubmitting(false)
+        setError(createError.message)
+        return
+      }
+      const { error: moveError } = await supabase
+        .from('expense_items')
+        .update({ report_id: newReport.id })
+        .in('id', Array.from(selectedItemIds))
+      if (moveError) {
+        setSubmitting(false)
+        setError(moveError.message)
+        return
+      }
+      const remainingTotal = items
+        .filter((i) => !selectedItemIds.has(i.id))
+        .reduce((sum, i) => sum + Number(i.amount), 0)
+      await supabase.from('expense_reports').update({ total_amount: remainingTotal }).eq('id', report.id)
+      setSubmitting(false)
+      setSuccessMessage(`${selectedItems.length}件を提出しました。`)
+      loadItems(report.id)
+      return
+    }
+
     if (items.length === 0) {
       setError('明細を1件以上追加してください。')
       return
@@ -168,20 +236,26 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
       setError('すべての明細の経費科目・税区分・金額を入力してください。')
       return
     }
+    setSubmitting(true)
     const { error: updateError } = await supabase
       .from('expense_reports')
       .update({
         status: 'submitted',
         submitted_at: new Date().toISOString(),
-        total_amount: total
+        total_amount: total,
+        approved_by: null,
+        approved_at: null
       })
       .eq('id', report.id)
+    setSubmitting(false)
     if (updateError) {
       setError(updateError.message)
       return
     }
     onDone()
   }
+
+  const canSubmit = withinSubmissionPeriod && (!isMonthMode || selectedItemIds.size > 0)
 
   if (error && !report) {
     return (
@@ -231,10 +305,23 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
       {error && (
         <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
       )}
+      {successMessage && (
+        <p className="mb-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          {successMessage}
+        </p>
+      )}
 
       <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
         {!readOnly && (
-          <div className="mb-4 flex justify-end">
+          <div className="mb-4 flex justify-end gap-2">
+            {isMonthMode && (
+              <button
+                onClick={toggleSelectAll}
+                className="rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              >
+                全選択
+              </button>
+            )}
             <button
               onClick={() => setModalState({ mode: 'create' })}
               className="rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
@@ -247,6 +334,16 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-gray-100 text-xs font-medium text-gray-400">
+                {isMonthMode && !readOnly && (
+                  <th className="w-8 p-2">
+                    <input
+                      type="checkbox"
+                      checked={items.length > 0 && selectedItemIds.size === items.length}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-200"
+                    />
+                  </th>
+                )}
                 <th className="p-2">日付</th>
                 <th className="p-2">経費科目</th>
                 <th className="p-2">摘要</th>
@@ -260,6 +357,16 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
+                  {isMonthMode && !readOnly && (
+                    <td className="p-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedItemIds.has(item.id)}
+                        onChange={() => toggleItemSelected(item.id)}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-200"
+                      />
+                    </td>
+                  )}
                   <td className="p-3 text-gray-700">{item.date}</td>
                   <td className="p-3 text-gray-700">
                     {(item.category_id && categoryNameById.get(item.category_id)) ?? '-'}
@@ -293,7 +400,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-sm text-gray-400">
+                  <td colSpan={9} className="p-6 text-center text-sm text-gray-400">
                     明細がまだありません。「+ 明細を追加」から入力してください。
                   </td>
                 </tr>
@@ -322,7 +429,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
           <div className="flex flex-col items-end gap-1">
             <button
               onClick={submitReport}
-              disabled={!withinSubmissionPeriod}
+              disabled={!canSubmit || submitting}
               title={
                 withinSubmissionPeriod || !settings
                   ? undefined
@@ -330,7 +437,11 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
               }
               className="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
             >
-              提出する
+              {submitting
+                ? '提出中…'
+                : isMonthMode
+                  ? `選択した${selectedItemIds.size}件を提出する`
+                  : '提出する'}
             </button>
             {!withinSubmissionPeriod && settings && (
               <p className="text-xs text-gray-400">
