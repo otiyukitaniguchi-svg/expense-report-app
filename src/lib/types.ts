@@ -54,3 +54,16 @@ export interface ExpenseItem {
   invoice_number: string | null
   memo: string | null
 }
+
+export interface TransportationRoute {
+  id: string
+  user_id: string
+  date: string
+  departure: string
+  arrival: string
+  route: string | null
+  distance_km: number
+  amount: number
+  memo: string | null
+  created_at: string
+}

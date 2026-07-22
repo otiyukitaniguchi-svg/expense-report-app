@@ -9,6 +9,9 @@ export function Settings(): JSX.Element {
   const { settings, loading, refresh } = useAppSettings()
   const [startDay, setStartDay] = useState(1)
   const [endDay, setEndDay] = useState(31)
+  const [fuelPrice, setFuelPrice] = useState(170)
+  const [fuelEfficiency, setFuelEfficiency] = useState(15)
+  const [seasonalIndex, setSeasonalIndex] = useState(1)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -16,6 +19,9 @@ export function Settings(): JSX.Element {
     if (settings) {
       setStartDay(settings.submission_start_day)
       setEndDay(settings.submission_end_day)
+      setFuelPrice(settings.fuel_price_per_liter)
+      setFuelEfficiency(settings.fuel_efficiency_km_per_liter)
+      setSeasonalIndex(settings.seasonal_index)
     }
   }, [settings])
 
@@ -24,7 +30,13 @@ export function Settings(): JSX.Element {
     setMessage(null)
     const { error } = await supabase
       .from('app_settings')
-      .update({ submission_start_day: startDay, submission_end_day: endDay })
+      .update({
+        submission_start_day: startDay,
+        submission_end_day: endDay,
+        fuel_price_per_liter: fuelPrice,
+        fuel_efficiency_km_per_liter: fuelEfficiency,
+        seasonal_index: seasonalIndex
+      })
       .eq('id', true)
     setSaving(false)
     if (error) {
@@ -66,15 +78,58 @@ export function Settings(): JSX.Element {
           />
           <span className="text-sm text-gray-500">日</span>
         </div>
-        {message && <p className="mt-3 text-sm text-emerald-600">{message}</p>}
-        <button
-          onClick={save}
-          disabled={saving}
-          className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
-        >
-          {saving ? '保存中…' : '保存'}
-        </button>
       </section>
+
+      <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+        <h2 className="mb-1 font-semibold text-gray-800">交通費(ガソリン代)自動計算</h2>
+        <p className="mb-4 text-sm text-gray-400">
+          「交通費詳細」の距離(km)から、距離×単価÷燃費×季節指数 で金額を自動計算します。
+        </p>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">単価(円/L)</label>
+            <input
+              type="number"
+              min={0}
+              step={0.1}
+              value={fuelPrice}
+              onChange={(e) => setFuelPrice(Number(e.target.value))}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">燃費(Km/L)</label>
+            <input
+              type="number"
+              min={0.1}
+              step={0.1}
+              value={fuelEfficiency}
+              onChange={(e) => setFuelEfficiency(Number(e.target.value))}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">季節指数</label>
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={seasonalIndex}
+              onChange={(e) => setSeasonalIndex(Number(e.target.value))}
+              className={inputClass}
+            />
+          </div>
+        </div>
+      </section>
+
+      {message && <p className="text-sm text-emerald-600">{message}</p>}
+      <button
+        onClick={save}
+        disabled={saving}
+        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+      >
+        {saving ? '保存中…' : '保存'}
+      </button>
 
       <p className="text-sm text-gray-400">その他の詳細設定(締め日など)は今後追加予定です。</p>
     </div>

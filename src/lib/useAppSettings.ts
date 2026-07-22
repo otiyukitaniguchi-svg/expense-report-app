@@ -4,6 +4,9 @@ import { supabase } from './supabaseClient'
 export interface AppSettings {
   submission_start_day: number
   submission_end_day: number
+  fuel_price_per_liter: number
+  fuel_efficiency_km_per_liter: number
+  seasonal_index: number
 }
 
 export function useAppSettings(): {
