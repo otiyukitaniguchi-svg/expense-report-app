@@ -9,6 +9,7 @@ import { AdminSettings } from './pages/AdminSettings'
 import { EmployeeMaster } from './pages/EmployeeMaster'
 import { DepartmentMaster } from './pages/DepartmentMaster'
 import { Settings } from './pages/Settings'
+import otiLogo from './assets/oti-logo.png'
 
 type View =
   | { name: 'drafts' }
@@ -65,9 +66,7 @@ function Shell(): JSX.Element {
     <div className="flex h-screen bg-gray-50">
       <aside className="flex w-60 flex-col border-r border-gray-100 bg-white px-4 py-6">
         <div className="mb-8 flex items-center gap-2 px-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">
-            経
-          </div>
+          <img src={otiLogo} alt="OTI" className="h-8 w-auto" />
           <span className="text-lg font-bold text-gray-900">経費精算</span>
         </div>
 
@@ -137,7 +136,11 @@ function Shell(): JSX.Element {
 
       <main className="flex-1 overflow-auto">
         {view.name === 'drafts' && (
-          <Drafts userId={profile.id} onOpenReport={(id) => setView({ name: 'report', id })} />
+          <Drafts
+            userId={profile.id}
+            userName={profile.name}
+            onOpenReport={(id) => setView({ name: 'report', id })}
+          />
         )}
         {view.name === 'reportStatus' && (
           <ReportStatus userId={profile.id} onOpenReport={(id) => setView({ name: 'report', id })} />
