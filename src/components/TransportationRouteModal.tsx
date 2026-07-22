@@ -12,6 +12,7 @@ interface Props {
 
 interface GeoCandidate {
   label: string
+  placeId: string
   lat: number
   lon: number
 }
@@ -112,7 +113,7 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
       const res = await fetch('/api/calculate-distance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ fromLat: from.lat, fromLon: from.lon, toLat: to.lat, toLon: to.lon })
+        body: JSON.stringify({ fromPlaceId: from.placeId, toPlaceId: to.placeId })
       })
       const body = await res.json()
       if (!res.ok) {
