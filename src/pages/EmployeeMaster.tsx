@@ -154,6 +154,7 @@ export function EmployeeMaster(): JSX.Element {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="氏名"
+            autoComplete="off"
             className={inputClass}
           />
           <input
@@ -161,12 +162,14 @@ export function EmployeeMaster(): JSX.Element {
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             placeholder="メールアドレス(社内管理用。ログインは氏名で行います)"
+            autoComplete="off"
             className={inputClass}
           />
           <PasswordInput
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             placeholder="パスワード(6文字以上)"
+            autoComplete="new-password"
             className={inputClass}
           />
           <select
@@ -262,6 +265,7 @@ export function EmployeeMaster(): JSX.Element {
                           setNewPasswords({ ...newPasswords, [p.id]: e.target.value })
                         }
                         placeholder="新しいパスワード"
+                        autoComplete="new-password"
                         className={`${inputClass} w-36`}
                       />
                       <button
