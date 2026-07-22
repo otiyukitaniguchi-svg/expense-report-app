@@ -18,6 +18,7 @@ export interface ExpenseCategory {
   id: string
   name: string
   is_active: boolean
+  default_tax_category_id: string | null
 }
 
 export interface TaxCategory {
@@ -51,4 +52,5 @@ export interface ExpenseItem {
   description: string
   payee: string | null
   invoice_number: string | null
+  memo: string | null
 }

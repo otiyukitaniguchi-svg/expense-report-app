@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import type { ExpenseCategory, ExpenseItem, TaxCategory } from '../lib/types'
+import type { ExpenseCategory, ExpenseItem } from '../lib/types'
 
 interface Props {
   initialItem: ExpenseItem | null
   categories: ExpenseCategory[]
-  taxCategories: TaxCategory[]
   onSave: (item: Omit<ExpenseItem, 'id' | 'report_id'>) => Promise<void>
   onClose: () => void
 }
@@ -13,20 +12,13 @@ const fieldClass =
   'w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 transition focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100'
 const labelClass = 'mb-1.5 block text-sm font-medium text-gray-700'
 
-export function ExpenseItemModal({
-  initialItem,
-  categories,
-  taxCategories,
-  onSave,
-  onClose
-}: Props): JSX.Element {
+export function ExpenseItemModal({ initialItem, categories, onSave, onClose }: Props): JSX.Element {
   const [date, setDate] = useState(initialItem?.date ?? new Date().toISOString().slice(0, 10))
   const [categoryId, setCategoryId] = useState(initialItem?.category_id ?? '')
-  const [taxCategoryId, setTaxCategoryId] = useState(initialItem?.tax_category_id ?? '')
   const [amount, setAmount] = useState(initialItem?.amount ?? 0)
-  const [payee, setPayee] = useState(initialItem?.payee ?? '')
-  const [invoiceNumber, setInvoiceNumber] = useState(initialItem?.invoice_number ?? '')
   const [description, setDescription] = useState(initialItem?.description ?? '')
+  const [payee, setPayee] = useState(initialItem?.payee ?? '')
+  const [memo, setMemo] = useState(initialItem?.memo ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,19 +32,25 @@ export function ExpenseItemModal({
 
   async function handleSubmit(): Promise<void> {
     setError(null)
-    if (!categoryId || !taxCategoryId || amount <= 0) {
-      setError('経費科目・税区分・金額(0より大きい値)は必須です')
+    if (!categoryId || amount <= 0) {
+      setError('科目名と金額(0より大きい値)は必須です')
+      return
+    }
+    const category = categories.find((c) => c.id === categoryId)
+    if (!category?.default_tax_category_id) {
+      setError('選択した経費科目にデフォルト税区分が設定されていません。「勘定科目一覧」で設定してください。')
       return
     }
     setSaving(true)
     await onSave({
       date,
       category_id: categoryId,
-      tax_category_id: taxCategoryId,
+      tax_category_id: category.default_tax_category_id,
       amount,
+      description,
       payee: payee.trim() || null,
-      invoice_number: invoiceNumber.trim() || null,
-      description
+      invoice_number: initialItem?.invoice_number ?? null,
+      memo: memo.trim() || null
     })
     setSaving(false)
   }
@@ -101,19 +99,13 @@ export function ExpenseItemModal({
             </select>
           </div>
           <div>
-            <label className={labelClass}>税区分</label>
-            <select
-              value={taxCategoryId}
-              onChange={(e) => setTaxCategoryId(e.target.value)}
+            <label className={labelClass}>摘要</label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               className={fieldClass}
-            >
-              <option value="">選択してください</option>
-              {taxCategories.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <div>
             <label className={labelClass}>金額</label>
@@ -135,20 +127,10 @@ export function ExpenseItemModal({
             />
           </div>
           <div>
-            <label className={labelClass}>インボイス登録番号</label>
-            <input
-              type="text"
-              value={invoiceNumber}
-              onChange={(e) => setInvoiceNumber(e.target.value)}
-              placeholder="T1234567890123"
-              className={fieldClass}
-            />
-          </div>
-          <div>
             <label className={labelClass}>備考</label>
             <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
               rows={3}
               className={fieldClass}
             />

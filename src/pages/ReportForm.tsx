@@ -239,11 +239,11 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
               <tr className="border-b border-gray-100 text-xs font-medium text-gray-400">
                 <th className="p-2">日付</th>
                 <th className="p-2">経費科目</th>
-                <th className="p-2">税区分</th>
+                <th className="p-2">摘要</th>
                 <th className="p-2">金額</th>
                 <th className="p-2">支払先</th>
-                <th className="p-2">インボイス登録番号</th>
-                <th className="p-2">摘要</th>
+                <th className="p-2">税区分</th>
+                <th className="p-2">備考</th>
                 <th className="p-2 text-right">操作</th>
               </tr>
             </thead>
@@ -254,13 +254,13 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
                   <td className="p-3 text-gray-700">
                     {(item.category_id && categoryNameById.get(item.category_id)) ?? '-'}
                   </td>
+                  <td className="p-3 text-gray-700">{item.description || '-'}</td>
+                  <td className="p-3 text-gray-700">{Number(item.amount).toLocaleString()} 円</td>
+                  <td className="p-3 text-gray-700">{item.payee ?? '-'}</td>
                   <td className="p-3 text-gray-700">
                     {(item.tax_category_id && taxNameById.get(item.tax_category_id)) ?? '-'}
                   </td>
-                  <td className="p-3 text-gray-700">{Number(item.amount).toLocaleString()} 円</td>
-                  <td className="p-3 text-gray-700">{item.payee ?? '-'}</td>
-                  <td className="p-3 text-gray-700">{item.invoice_number ?? '-'}</td>
-                  <td className="p-3 text-gray-700">{item.description || '-'}</td>
+                  <td className="p-3 text-gray-700">{item.memo ?? '-'}</td>
                   <td className="p-3">
                     {!readOnly && (
                       <div className="flex justify-end gap-3">
@@ -344,7 +344,6 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
         <ExpenseItemModal
           initialItem={modalState.mode === 'edit' ? modalState.item : null}
           categories={categories.filter((c) => c.is_active)}
-          taxCategories={taxCategories}
           onSave={saveItem}
           onClose={() => setModalState({ mode: 'closed' })}
         />

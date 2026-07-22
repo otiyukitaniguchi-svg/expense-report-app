@@ -30,6 +30,14 @@ export function AdminSettings(): JSX.Element {
     refresh()
   }
 
+  async function setDefaultTax(id: string, taxCategoryId: string): Promise<void> {
+    await supabase
+      .from('expense_categories')
+      .update({ default_tax_category_id: taxCategoryId || null })
+      .eq('id', id)
+    refresh()
+  }
+
   async function addTaxCategory(): Promise<void> {
     if (!newTaxName.trim()) return
     const rate = Number(newTaxRate) / 100
@@ -79,6 +87,7 @@ export function AdminSettings(): JSX.Element {
           <thead>
             <tr className="border-b border-gray-100 bg-blue-50/60 text-xs font-medium text-blue-700">
               <th className="p-4">経費科目</th>
+              <th className="p-4">デフォルト税区分</th>
               <th className="p-4 text-right">状態</th>
             </tr>
           </thead>
@@ -86,6 +95,20 @@ export function AdminSettings(): JSX.Element {
             {categories.map((c) => (
               <tr key={c.id} className="border-b border-gray-50 last:border-0">
                 <td className="p-4 text-gray-700">{c.name}</td>
+                <td className="p-4">
+                  <select
+                    value={c.default_tax_category_id ?? ''}
+                    onChange={(e) => setDefaultTax(c.id, e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">未設定</option>
+                    {taxCategories.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </td>
                 <td className="p-4 text-right">
                   <button
                     onClick={() => toggleCategoryActive(c.id, c.is_active)}
