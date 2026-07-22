@@ -1,20 +1,24 @@
 import { useState } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { Login } from './pages/Login'
-import { Dashboard } from './pages/Dashboard'
+import { Drafts } from './pages/Drafts'
+import { ReportStatus } from './pages/ReportStatus'
 import { ReportForm } from './pages/ReportForm'
 import { Approvals } from './pages/Approvals'
 import { AdminSettings } from './pages/AdminSettings'
 import { EmployeeMaster } from './pages/EmployeeMaster'
 import { DepartmentMaster } from './pages/DepartmentMaster'
+import { Settings } from './pages/Settings'
 
 type View =
-  | { name: 'dashboard' }
+  | { name: 'drafts' }
+  | { name: 'reportStatus' }
   | { name: 'report'; id: string | null }
   | { name: 'approvals' }
   | { name: 'admin' }
   | { name: 'employees' }
   | { name: 'departments' }
+  | { name: 'settings' }
 
 const roleLabels = { employee: '一般ユーザー', manager: '承認者', admin: '管理者' } as const
 
@@ -41,7 +45,7 @@ function NavItem({
 
 function Shell(): JSX.Element {
   const { session, profile, loading, signOut } = useAuth()
-  const [view, setView] = useState<View>({ name: 'dashboard' })
+  const [view, setView] = useState<View>({ name: 'drafts' })
 
   if (loading) {
     return (
@@ -55,7 +59,7 @@ function Shell(): JSX.Element {
 
   const canApprove = profile.role === 'manager' || profile.role === 'admin'
   const isAdmin = profile.role === 'admin'
-  const activeReportView = view.name === 'report'
+  const isNewReportView = view.name === 'report' && view.id === null
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -69,9 +73,19 @@ function Shell(): JSX.Element {
 
         <nav className="flex flex-1 flex-col gap-1">
           <NavItem
-            label="マイ申請"
-            active={view.name === 'dashboard' || activeReportView}
-            onClick={() => setView({ name: 'dashboard' })}
+            label="新規登録"
+            active={isNewReportView}
+            onClick={() => setView({ name: 'report', id: null })}
+          />
+          <NavItem
+            label="申請"
+            active={view.name === 'drafts'}
+            onClick={() => setView({ name: 'drafts' })}
+          />
+          <NavItem
+            label="申請状況"
+            active={view.name === 'reportStatus'}
+            onClick={() => setView({ name: 'reportStatus' })}
           />
           {canApprove && (
             <NavItem
@@ -86,19 +100,24 @@ function Shell(): JSX.Element {
                 管理者設定
               </div>
               <NavItem
-                label="社員マスタ"
+                label="社員一覧"
                 active={view.name === 'employees'}
                 onClick={() => setView({ name: 'employees' })}
               />
               <NavItem
-                label="部署マスタ"
+                label="部署一覧"
                 active={view.name === 'departments'}
                 onClick={() => setView({ name: 'departments' })}
               />
               <NavItem
-                label="経費科目/税区分マスタ"
+                label="勘定科目一覧"
                 active={view.name === 'admin'}
                 onClick={() => setView({ name: 'admin' })}
+              />
+              <NavItem
+                label="設定"
+                active={view.name === 'settings'}
+                onClick={() => setView({ name: 'settings' })}
               />
             </>
           )}
@@ -117,14 +136,17 @@ function Shell(): JSX.Element {
       </aside>
 
       <main className="flex-1 overflow-auto">
-        {view.name === 'dashboard' && (
-          <Dashboard userId={profile.id} onOpenReport={(id) => setView({ name: 'report', id })} />
+        {view.name === 'drafts' && (
+          <Drafts userId={profile.id} onOpenReport={(id) => setView({ name: 'report', id })} />
+        )}
+        {view.name === 'reportStatus' && (
+          <ReportStatus userId={profile.id} onOpenReport={(id) => setView({ name: 'report', id })} />
         )}
         {view.name === 'report' && (
           <ReportForm
             userId={profile.id}
             reportId={view.id}
-            onDone={() => setView({ name: 'dashboard' })}
+            onDone={() => setView({ name: 'drafts' })}
           />
         )}
         {view.name === 'approvals' && (
@@ -133,6 +155,7 @@ function Shell(): JSX.Element {
         {view.name === 'employees' && <EmployeeMaster />}
         {view.name === 'departments' && <DepartmentMaster />}
         {view.name === 'admin' && <AdminSettings />}
+        {view.name === 'settings' && <Settings />}
       </main>
     </div>
   )

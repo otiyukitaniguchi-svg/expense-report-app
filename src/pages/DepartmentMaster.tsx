@@ -49,7 +49,7 @@ export function DepartmentMaster(): JSX.Element {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-8">
-      <h1 className="text-2xl font-bold text-gray-900">部署マスタ</h1>
+      <h1 className="text-2xl font-bold text-gray-900">部署一覧</h1>
       {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
       <section className="rounded-xl border border-gray-100 bg-white shadow-sm">

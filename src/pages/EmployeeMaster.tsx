@@ -144,7 +144,7 @@ export function EmployeeMaster(): JSX.Element {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-8">
-      <h1 className="text-2xl font-bold text-gray-900">社員マスタ</h1>
+      <h1 className="text-2xl font-bold text-gray-900">社員一覧</h1>
 
       <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
         <h2 className="mb-4 font-semibold text-gray-800">社員を追加</h2>

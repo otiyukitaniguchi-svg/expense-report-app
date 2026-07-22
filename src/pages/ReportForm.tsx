@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useLookups } from '../lib/useLookups'
+import { useAppSettings } from '../lib/useAppSettings'
 import { ExpenseItemRow } from '../components/ExpenseItemRow'
 import { StatusBadge } from '../components/StatusBadge'
 import type { ExpenseItem, ExpenseReport } from '../lib/types'
@@ -27,6 +28,7 @@ function emptyItem(reportId: string): ExpenseItem {
 
 export function ReportForm({ userId, reportId, onDone }: Props): JSX.Element {
   const { categories, taxCategories } = useLookups()
+  const { settings } = useAppSettings()
   const [report, setReport] = useState<ExpenseReport | null>(null)
   const [items, setItems] = useState<ExpenseItem[]>([])
   const [title, setTitle] = useState('')
@@ -64,6 +66,9 @@ export function ReportForm({ userId, reportId, onDone }: Props): JSX.Element {
 
   const readOnly = report?.status !== 'draft'
   const total = items.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+  const dayOfMonth = new Date().getDate()
+  const withinSubmissionPeriod =
+    !settings || (dayOfMonth >= settings.submission_start_day && dayOfMonth <= settings.submission_end_day)
 
   async function saveTitle(): Promise<void> {
     if (!report) return
@@ -94,6 +99,12 @@ export function ReportForm({ userId, reportId, onDone }: Props): JSX.Element {
 
   async function submitReport(): Promise<void> {
     if (!report) return
+    if (!withinSubmissionPeriod && settings) {
+      setError(
+        `提出可能期間(${settings.submission_start_day}日〜${settings.submission_end_day}日)外のため、提出できません。`
+      )
+      return
+    }
     if (items.length === 0) {
       setError('明細を1件以上追加してください。')
       return
@@ -208,12 +219,25 @@ export function ReportForm({ userId, reportId, onDone }: Props): JSX.Element {
           一覧に戻る
         </button>
         {!readOnly && (
-          <button
-            onClick={submitReport}
-            className="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
-          >
-            提出する
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={submitReport}
+              disabled={!withinSubmissionPeriod}
+              title={
+                withinSubmissionPeriod || !settings
+                  ? undefined
+                  : `提出可能期間: ${settings.submission_start_day}日〜${settings.submission_end_day}日`
+              }
+              className="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+            >
+              提出する
+            </button>
+            {!withinSubmissionPeriod && settings && (
+              <p className="text-xs text-gray-400">
+                提出可能期間: {settings.submission_start_day}日〜{settings.submission_end_day}日
+              </p>
+            )}
+          </div>
         )}
       </div>
     </div>
