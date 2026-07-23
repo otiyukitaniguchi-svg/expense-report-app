@@ -90,6 +90,11 @@ export function EmployeeMaster(): JSX.Element {
     load()
   }
 
+  async function toggleNotify(id: string, current: boolean): Promise<void> {
+    await supabase.from('profiles').update({ notify_enabled: !current }).eq('id', id)
+    load()
+  }
+
   async function saveName(id: string): Promise<void> {
     const name = names[id]?.trim()
     if (!name) return
@@ -163,7 +168,7 @@ export function EmployeeMaster(): JSX.Element {
 
       <section className="rounded-xl border-2 border-gray-300 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px] text-left text-base">
+          <table className="w-full min-w-[1120px] text-left text-base">
             <thead>
               <tr className="border-b-2 border-gray-300 bg-blue-50 text-sm font-bold text-blue-800">
                 <th className="p-4 text-center">氏名</th>
@@ -171,6 +176,7 @@ export function EmployeeMaster(): JSX.Element {
                 <th className="p-4 text-center">役割</th>
                 <th className="p-4 text-center">部署</th>
                 <th className="p-4 text-center">承認者</th>
+                <th className="p-4 text-center">締め切り通知</th>
                 <th className="p-4 text-center">パスワード変更</th>
               </tr>
             </thead>
@@ -233,6 +239,18 @@ export function EmployeeMaster(): JSX.Element {
                     </select>
                   </td>
                   <td className="p-4 font-semibold text-gray-700">{manager?.name ?? '-'}</td>
+                  <td className="p-4 text-center">
+                    <button
+                      onClick={() => toggleNotify(p.id, p.notify_enabled)}
+                      className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                        p.notify_enabled
+                          ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                      }`}
+                    >
+                      {p.notify_enabled ? 'ON' : 'OFF'}
+                    </button>
+                  </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
                       <PasswordInput

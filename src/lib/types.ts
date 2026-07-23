@@ -6,6 +6,7 @@ export interface Profile {
   role: Role
   manager_id: string | null
   department_id: string | null
+  notify_enabled: boolean
 }
 
 export interface Department {
