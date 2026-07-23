@@ -51,6 +51,7 @@ export interface ExpenseItem {
   amount: number
   description: string
   payee: string | null
+  project_name: string | null
   invoice_number: string | null
   memo: string | null
 }

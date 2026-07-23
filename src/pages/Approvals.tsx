@@ -153,6 +153,7 @@ export function Approvals({ managerId, onOpenReport }: Props): JSX.Element {
           taxCategoryName: (item.tax_category_id && taxNameById.get(item.tax_category_id)) ?? '-',
           amount: Number(item.amount),
           payee: item.payee ?? '-',
+          projectName: item.project_name ?? '-',
           invoiceNumber: item.invoice_number ?? '-',
           description: item.description
         }

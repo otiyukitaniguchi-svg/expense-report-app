@@ -103,6 +103,7 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
           date: i.date,
           categoryName: (i.category_id && categoryNameById.get(i.category_id)) ?? '-',
           payee: i.payee ?? '',
+          projectName: i.project_name ?? '',
           description: i.description,
           memo: i.memo ?? '',
           amount: Number(i.amount)

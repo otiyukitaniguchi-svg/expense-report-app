@@ -309,7 +309,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
           </div>
         )}
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[880px] text-left text-base">
+          <table className="w-full min-w-[980px] text-left text-base">
             <thead>
               <tr className="border-b-2 border-gray-300 bg-gray-100 text-sm font-bold text-gray-700">
                 {isMonthMode && !readOnly && (
@@ -327,6 +327,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
                 <th className="p-2">摘要</th>
                 <th className="p-2">金額</th>
                 <th className="p-2">支払先</th>
+                <th className="p-2">案件名</th>
                 <th className="p-2">税区分</th>
                 <th className="p-2">備考</th>
                 <th className="p-2 text-right">操作</th>
@@ -352,6 +353,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
                   <td className="p-3 text-gray-900">{item.description || '-'}</td>
                   <td className="p-3 font-bold text-gray-900">{Number(item.amount).toLocaleString()} 円</td>
                   <td className="p-3 text-gray-900">{item.payee ?? '-'}</td>
+                  <td className="p-3 text-gray-900">{item.project_name ?? '-'}</td>
                   <td className="p-3 text-gray-900">
                     {(item.tax_category_id && taxNameById.get(item.tax_category_id)) ?? '-'}
                   </td>
@@ -378,7 +380,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="p-6 text-center text-sm text-gray-500">
+                  <td colSpan={10} className="p-6 text-center text-sm text-gray-500">
                     明細がまだありません。「+ 明細を追加」から入力してください。
                   </td>
                 </tr>
