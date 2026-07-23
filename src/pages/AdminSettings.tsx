@@ -11,6 +11,11 @@ export function AdminSettings(): JSX.Element {
   const [newTaxName, setNewTaxName] = useState('')
   const [newTaxRate, setNewTaxRate] = useState('10')
   const [error, setError] = useState<string | null>(null)
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
+  const [editCategoryName, setEditCategoryName] = useState('')
+  const [editingTaxId, setEditingTaxId] = useState<string | null>(null)
+  const [editTaxName, setEditTaxName] = useState('')
+  const [editTaxRate, setEditTaxRate] = useState('')
 
   async function addCategory(): Promise<void> {
     if (!newCategoryName.trim()) return
@@ -82,6 +87,47 @@ export function AdminSettings(): JSX.Element {
     refresh()
   }
 
+  function startEditCategory(id: string, name: string): void {
+    setEditingCategoryId(id)
+    setEditCategoryName(name)
+  }
+
+  async function saveCategoryName(id: string): Promise<void> {
+    if (!editCategoryName.trim()) return
+    setError(null)
+    const { error: updateError } = await supabase
+      .from('expense_categories')
+      .update({ name: editCategoryName.trim() })
+      .eq('id', id)
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
+    setEditingCategoryId(null)
+    refresh()
+  }
+
+  function startEditTax(id: string, name: string, rate: number): void {
+    setEditingTaxId(id)
+    setEditTaxName(name)
+    setEditTaxRate(String(Math.round(rate * 100)))
+  }
+
+  async function saveTax(id: string): Promise<void> {
+    if (!editTaxName.trim()) return
+    setError(null)
+    const { error: updateError } = await supabase
+      .from('tax_categories')
+      .update({ name: editTaxName.trim(), rate: Number(editTaxRate) / 100 })
+      .eq('id', id)
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
+    setEditingTaxId(null)
+    refresh()
+  }
+
   if (loading) return <p className="p-8 text-sm text-gray-500">読み込み中…</p>
 
   return (
@@ -118,13 +164,23 @@ export function AdminSettings(): JSX.Element {
                 <th className="p-4">経費科目</th>
                 <th className="p-4">デフォルト税区分</th>
                 <th className="p-4 text-right">状態</th>
-                <th className="p-4 text-right">削除</th>
+                <th className="p-4 text-right">操作</th>
               </tr>
             </thead>
             <tbody>
               {categories.map((c) => (
                 <tr key={c.id} className="border-b border-gray-200 last:border-0">
-                  <td className="p-4 font-semibold text-gray-900">{c.name}</td>
+                  <td className="p-4 font-semibold text-gray-900">
+                    {editingCategoryId === c.id ? (
+                      <input
+                        value={editCategoryName}
+                        onChange={(e) => setEditCategoryName(e.target.value)}
+                        className={`${inputClass} w-40`}
+                      />
+                    ) : (
+                      c.name
+                    )}
+                  </td>
                   <td className="p-4">
                     <select
                       value={c.default_tax_category_id ?? ''}
@@ -152,12 +208,39 @@ export function AdminSettings(): JSX.Element {
                     </button>
                   </td>
                   <td className="p-4 text-right">
-                    <button
-                      onClick={() => deleteCategory(c.id)}
-                      className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
-                    >
-                      削除
-                    </button>
+                    <div className="flex justify-end gap-3">
+                      {editingCategoryId === c.id ? (
+                        <>
+                          <button
+                            onClick={() => saveCategoryName(c.id)}
+                            className="text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                          >
+                            保存
+                          </button>
+                          <button
+                            onClick={() => setEditingCategoryId(null)}
+                            className="text-sm font-bold text-gray-500 hover:text-gray-700 hover:underline"
+                          >
+                            キャンセル
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => startEditCategory(c.id, c.name)}
+                            className="text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                          >
+                            編集
+                          </button>
+                          <button
+                            onClick={() => deleteCategory(c.id)}
+                            className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
+                          >
+                            削除
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -197,21 +280,69 @@ export function AdminSettings(): JSX.Element {
               <tr className="border-b-2 border-gray-300 bg-blue-50 text-sm font-bold text-blue-800">
                 <th className="p-4">税区分</th>
                 <th className="p-4 text-right">税率</th>
-                <th className="p-4 text-right">削除</th>
+                <th className="p-4 text-right">操作</th>
               </tr>
             </thead>
             <tbody>
               {taxCategories.map((t) => (
                 <tr key={t.id} className="border-b border-gray-200 last:border-0">
-                  <td className="p-4 font-semibold text-gray-900">{t.name}</td>
-                  <td className="p-4 text-right font-bold text-gray-900">{(t.rate * 100).toFixed(0)}%</td>
+                  <td className="p-4 font-semibold text-gray-900">
+                    {editingTaxId === t.id ? (
+                      <input
+                        value={editTaxName}
+                        onChange={(e) => setEditTaxName(e.target.value)}
+                        className={`${inputClass} w-32`}
+                      />
+                    ) : (
+                      t.name
+                    )}
+                  </td>
+                  <td className="p-4 text-right font-bold text-gray-900">
+                    {editingTaxId === t.id ? (
+                      <input
+                        type="number"
+                        value={editTaxRate}
+                        onChange={(e) => setEditTaxRate(e.target.value)}
+                        className={`${inputClass} w-20 text-right`}
+                      />
+                    ) : (
+                      `${(t.rate * 100).toFixed(0)}%`
+                    )}
+                  </td>
                   <td className="p-4 text-right">
-                    <button
-                      onClick={() => deleteTaxCategory(t.id)}
-                      className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
-                    >
-                      削除
-                    </button>
+                    <div className="flex justify-end gap-3">
+                      {editingTaxId === t.id ? (
+                        <>
+                          <button
+                            onClick={() => saveTax(t.id)}
+                            className="text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                          >
+                            保存
+                          </button>
+                          <button
+                            onClick={() => setEditingTaxId(null)}
+                            className="text-sm font-bold text-gray-500 hover:text-gray-700 hover:underline"
+                          >
+                            キャンセル
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => startEditTax(t.id, t.name, t.rate)}
+                            className="text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                          >
+                            編集
+                          </button>
+                          <button
+                            onClick={() => deleteTaxCategory(t.id)}
+                            className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
+                          >
+                            削除
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
