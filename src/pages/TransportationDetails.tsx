@@ -122,6 +122,7 @@ export function TransportationDetails({ userId, userName, onBack }: Props): JSX.
           arrival: r.arrival,
           distanceKm: r.distance_km,
           amount: Number(r.amount),
+          projectName: r.project_name ?? '',
           memo: r.memo ?? ''
         })),
         userName,
@@ -230,6 +231,9 @@ export function TransportationDetails({ userId, userName, onBack }: Props): JSX.
                   {r.departure} → {r.arrival}
                 </p>
                 <p className="mt-1 text-sm text-gray-500">距離: {r.distance_km} km</p>
+                {r.project_name && (
+                  <p className="mt-1 text-sm text-gray-500">案件名: {r.project_name}</p>
+                )}
                 {r.memo && <p className="mt-1 text-sm text-gray-500">備考: {r.memo}</p>}
                 <div className="mt-3 flex justify-end gap-4 border-t border-gray-100 pt-3">
                   <button
@@ -252,7 +256,7 @@ export function TransportationDetails({ userId, userName, onBack }: Props): JSX.
 
         {/* PC表示: 表形式 */}
         <div className="hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[720px] text-left text-base">
+          <table className="w-full min-w-[840px] text-left text-base">
             <thead>
               <tr className="border-b-2 border-gray-300 bg-gray-100 text-sm font-bold text-gray-700">
                 <th className="w-8 p-3">
@@ -268,6 +272,7 @@ export function TransportationDetails({ userId, userName, onBack }: Props): JSX.
                 <th className="p-3">到着地</th>
                 <th className="p-3">距離(km)</th>
                 <th className="p-3">金額</th>
+                <th className="p-3">案件名</th>
                 <th className="p-3">備考</th>
                 <th className="p-3 text-right">操作</th>
               </tr>
@@ -275,13 +280,13 @@ export function TransportationDetails({ userId, userName, onBack }: Props): JSX.
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-sm text-gray-500">
+                  <td colSpan={9} className="p-6 text-center text-sm text-gray-500">
                     読み込み中…
                   </td>
                 </tr>
               ) : filteredRoutes.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-sm text-gray-500">
+                  <td colSpan={9} className="p-6 text-center text-sm text-gray-500">
                     交通費詳細がまだありません。「+ 追加」から入力してください。
                   </td>
                 </tr>
@@ -301,6 +306,7 @@ export function TransportationDetails({ userId, userName, onBack }: Props): JSX.
                     <td className="p-3 text-gray-900">{r.arrival}</td>
                     <td className="p-3 text-gray-900">{r.distance_km}</td>
                     <td className="p-3 font-bold text-gray-900">{Number(r.amount).toLocaleString()} 円</td>
+                    <td className="p-3 text-gray-900">{r.project_name ?? '-'}</td>
                     <td className="p-3 text-gray-900">{r.memo ?? '-'}</td>
                     <td className="p-3">
                       <div className="flex justify-end gap-3">

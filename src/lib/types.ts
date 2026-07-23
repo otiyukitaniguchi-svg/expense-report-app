@@ -51,7 +51,6 @@ export interface ExpenseItem {
   amount: number
   description: string
   payee: string | null
-  project_name: string | null
   invoice_number: string | null
   memo: string | null
 }
@@ -64,6 +63,7 @@ export interface TransportationRoute {
   arrival: string
   distance_km: number
   amount: number
+  project_name: string | null
   memo: string | null
   created_at: string
 }

@@ -31,6 +31,7 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
   const [departure, setDeparture] = useState(initialItem?.departure ?? '')
   const [arrival, setArrival] = useState(initialItem?.arrival ?? '')
   const [distanceKm, setDistanceKm] = useState(initialItem?.distance_km ?? 0)
+  const [projectName, setProjectName] = useState(initialItem?.project_name ?? '')
   const [memo, setMemo] = useState(initialItem?.memo ?? '')
   const [saving, setSaving] = useState(false)
   const [searching, setSearching] = useState(false)
@@ -141,6 +142,7 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
       arrival: arrival.trim(),
       distance_km: distanceKm,
       amount: computedAmount,
+      project_name: projectName.trim() || null,
       memo: memo.trim() || null
     })
     setSaving(false)
@@ -270,6 +272,16 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
               km/L × {activeSeasonalIndex})
               {Number(date.slice(5, 7)) >= 4 && Number(date.slice(5, 7)) <= 10 ? '・夏場' : '・冬場'})
             </span>
+          </div>
+          <div>
+            <label className={labelClass}>案件名</label>
+            <input
+              type="text"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              placeholder="例: ○○ → ○○"
+              className={fieldClass}
+            />
           </div>
           <div>
             <label className={labelClass}>備考</label>

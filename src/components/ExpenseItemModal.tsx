@@ -18,7 +18,6 @@ export function ExpenseItemModal({ initialItem, categories, onSave, onClose }: P
   const [amount, setAmount] = useState(initialItem?.amount ?? 0)
   const [description, setDescription] = useState(initialItem?.description ?? '')
   const [payee, setPayee] = useState(initialItem?.payee ?? '')
-  const [projectName, setProjectName] = useState(initialItem?.project_name ?? '')
   const [memo, setMemo] = useState(initialItem?.memo ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -50,7 +49,6 @@ export function ExpenseItemModal({ initialItem, categories, onSave, onClose }: P
       amount,
       description,
       payee: payee.trim() || null,
-      project_name: projectName.trim() || null,
       invoice_number: initialItem?.invoice_number ?? null,
       memo: memo.trim() || null
     })
@@ -133,16 +131,6 @@ export function ExpenseItemModal({ initialItem, categories, onSave, onClose }: P
               type="text"
               value={payee}
               onChange={(e) => setPayee(e.target.value)}
-              className={fieldClass}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>案件名</label>
-            <input
-              type="text"
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              placeholder="例: ○○ → ○○"
               className={fieldClass}
             />
           </div>

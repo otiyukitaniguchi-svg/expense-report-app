@@ -6,7 +6,6 @@ export interface PdfListRow {
   taxCategoryName: string
   amount: number
   payee: string
-  projectName: string
   invoiceNumber: string
   description: string
 }
@@ -59,7 +58,6 @@ export function buildExpenseListHtml(rows: PdfListRow[], title: string): string 
       <td>${escapeHtml(r.taxCategoryName)}</td>
       <td class="amount">${r.amount.toLocaleString()}</td>
       <td>${escapeHtml(r.payee)}</td>
-      <td>${escapeHtml(r.projectName)}</td>
       <td>${escapeHtml(r.invoiceNumber)}</td>
       <td>${escapeHtml(r.description)}</td>
     </tr>`
@@ -89,7 +87,6 @@ export function buildExpenseListHtml(rows: PdfListRow[], title: string): string 
         <th>税区分</th>
         <th class="amount">金額</th>
         <th>支払先</th>
-        <th>案件名</th>
         <th>インボイス登録番号</th>
         <th>摘要</th>
       </tr>
@@ -99,7 +96,7 @@ export function buildExpenseListHtml(rows: PdfListRow[], title: string): string 
       <tr>
         <td colspan="5">合計</td>
         <td class="amount">${total.toLocaleString()}</td>
-        <td colspan="4"></td>
+        <td colspan="3"></td>
       </tr>
     </tfoot>
   </table>
@@ -111,7 +108,6 @@ export interface SingleReportSlipItem {
   date: string
   categoryName: string
   payee: string
-  projectName: string
   description: string
   memo: string
   amount: number
@@ -142,7 +138,6 @@ export function buildSingleReportSlipHtml(slip: SingleReportSlip): string {
       <td class="center">${escapeHtml(i.date)}</td>
       <td>${escapeHtml(i.categoryName)}</td>
       <td>${escapeHtml(i.payee || '-')}</td>
-      <td>${escapeHtml(i.projectName || '-')}</td>
       <td>${escapeHtml(i.description || '-')}</td>
       <td>${escapeHtml(i.memo || '-')}</td>
       <td class="amount">¥ ${i.amount.toLocaleString()}</td>
@@ -208,7 +203,6 @@ export function buildSingleReportSlipHtml(slip: SingleReportSlip): string {
         <th class="center">日付</th>
         <th>科目名</th>
         <th>支払先</th>
-        <th>案件名</th>
         <th>摘要</th>
         <th>備考</th>
         <th class="amount">計</th>
@@ -217,7 +211,7 @@ export function buildSingleReportSlipHtml(slip: SingleReportSlip): string {
     <tbody>${itemRows}</tbody>
     <tfoot>
       <tr>
-        <td colspan="7">合計</td>
+        <td colspan="6">合計</td>
         <td class="amount">¥ ${total.toLocaleString()}</td>
       </tr>
     </tfoot>
@@ -259,6 +253,7 @@ export interface PdfTransportationRow {
   arrival: string
   distanceKm: number
   amount: number
+  projectName: string
   memo: string
 }
 
@@ -277,6 +272,7 @@ export function buildTransportationListHtml(
       <td>${escapeHtml(r.arrival)}</td>
       <td class="amount">${r.distanceKm}</td>
       <td class="amount">${r.amount.toLocaleString()}</td>
+      <td>${escapeHtml(r.projectName)}</td>
       <td>${escapeHtml(r.memo)}</td>
     </tr>`
     )
@@ -302,6 +298,7 @@ export function buildTransportationListHtml(
         <th>到着地</th>
         <th class="amount">距離(km)</th>
         <th class="amount">金額</th>
+        <th>案件名</th>
         <th>備考</th>
       </tr>
     </thead>
@@ -310,7 +307,7 @@ export function buildTransportationListHtml(
       <tr>
         <td colspan="4">合計</td>
         <td class="amount">${total.toLocaleString()}</td>
-        <td></td>
+        <td colspan="2"></td>
       </tr>
     </tfoot>
   </table>
