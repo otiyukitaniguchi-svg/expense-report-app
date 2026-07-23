@@ -27,6 +27,7 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
   const [monthFilter, setMonthFilter] = useState('all')
   const [generatingId, setGeneratingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   async function load(): Promise<void> {
     setLoading(true)
@@ -122,22 +123,73 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
       ? reports
       : reports.filter((r) => (r.report_month ?? monthOfDateStr(r.submitted_at)) === monthFilter)
 
+  const deletableReports = filteredReports.filter((r) => r.status === 'rejected')
+
+  async function removeSelected(): Promise<void> {
+    if (selectedIds.size === 0) return
+    if (!window.confirm(`選択した${selectedIds.size}件の申請を削除しますか?この操作は取り消せません。`)) return
+    setError(null)
+    const { error: deleteError } = await supabase
+      .from('expense_reports')
+      .delete()
+      .in('id', Array.from(selectedIds))
+    if (deleteError) {
+      setError(deleteError.message)
+      return
+    }
+    setSelectedIds(new Set())
+    load()
+  }
+
+  function toggleSelected(id: string): void {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll(): void {
+    setSelectedIds((prev) =>
+      prev.size === deletableReports.length ? new Set() : new Set(deletableReports.map((r) => r.id))
+    )
+  }
+
   return (
     <div className="mx-auto max-w-6xl p-4 md:p-8">
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <h1 className="text-3xl font-bold text-gray-900">申請状況</h1>
-        <select
-          value={monthFilter}
-          onChange={(e) => setMonthFilter(e.target.value)}
-          className="rounded-md border-2 border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700"
-        >
-          <option value="all">すべて</option>
-          {recentMonths(12).map((m) => (
-            <option key={m} value={m}>
-              {formatMonthLabel(m)}
-            </option>
-          ))}
-        </select>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-bold text-gray-900">申請状況</h1>
+          <select
+            value={monthFilter}
+            onChange={(e) => setMonthFilter(e.target.value)}
+            className="rounded-md border-2 border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700"
+          >
+            <option value="all">すべて</option>
+            {recentMonths(12).map((m) => (
+              <option key={m} value={m}>
+                {formatMonthLabel(m)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={toggleSelectAll}
+            disabled={deletableReports.length === 0}
+            className="rounded-md border-2 border-gray-300 px-3 py-1.5 text-sm font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+          >
+            全選択
+          </button>
+          <button
+            onClick={removeSelected}
+            disabled={selectedIds.size === 0}
+            className="rounded-md border-2 border-red-300 px-3 py-1.5 text-sm font-bold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+          >
+            選択削除{selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -156,6 +208,14 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
             <table className="w-full min-w-[860px] text-left text-base">
               <thead>
                 <tr className="border-b-2 border-gray-300 bg-gray-100 text-sm font-bold text-gray-700">
+                  <th className="w-8 p-4">
+                    <input
+                      type="checkbox"
+                      checked={deletableReports.length > 0 && selectedIds.size === deletableReports.length}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-200"
+                    />
+                  </th>
                   <th className="p-4">申請者</th>
                   <th className="p-4">日付</th>
                   <th className="p-4">状態</th>
@@ -168,6 +228,16 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
               <tbody>
                 {filteredReports.map((r) => (
                   <tr key={r.id} className="border-b border-gray-200 last:border-0 hover:bg-gray-50">
+                    <td className="p-4">
+                      {r.status === 'rejected' && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(r.id)}
+                          onChange={() => toggleSelected(r.id)}
+                          className="h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-200"
+                        />
+                      )}
+                    </td>
                     <td className="p-4 font-bold text-gray-900">{userName}</td>
                     <td
                       className="cursor-pointer p-4 font-bold text-blue-600 hover:underline"
