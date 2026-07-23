@@ -54,7 +54,7 @@ function Shell(): JSX.Element {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 text-sm font-semibold text-gray-500">
+      <div className="flex h-dvh items-center justify-center bg-gray-50 text-sm font-semibold text-gray-500">
         読み込み中…
       </div>
     )
@@ -72,7 +72,7 @@ function Shell(): JSX.Element {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50 md:flex-row">
+    <div className="flex h-dvh flex-col overflow-hidden bg-gray-50 md:flex-row">
       <header className="flex items-center justify-between border-b-2 border-gray-300 bg-white px-4 py-3 md:hidden">
         <div className="flex items-center gap-2">
           <img src={otiLogo} alt="OTI" className="h-7 w-auto" />

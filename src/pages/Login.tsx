@@ -19,7 +19,7 @@ export function Login(): JSX.Element {
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-50">
+    <div className="flex h-dvh items-center justify-center bg-gray-50 p-4">
       <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-10 shadow-sm">
         <div className="mb-8 flex flex-col items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-base font-bold text-white">
