@@ -4,14 +4,18 @@ export interface Profile {
   id: string
   name: string
   role: Role
-  manager_id: string | null
   department_id: string | null
 }
 
 export interface Department {
   id: string
   name: string
-  approver_id: string | null
+}
+
+export interface DepartmentApprover {
+  department_id: string
+  approver_id: string
+  approver_name: string
 }
 
 export interface ExpenseCategory {

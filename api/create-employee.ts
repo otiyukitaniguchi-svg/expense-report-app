@@ -46,23 +46,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
 
-  let managerId: string | null = null
-  if (departmentId) {
-    const { data: department } = await adminClient
-      .from('departments')
-      .select('approver_id')
-      .eq('id', departmentId)
-      .single()
-    managerId = (department as { approver_id: string | null } | null)?.approver_id ?? null
-  }
-
   const { error: updateError } = await adminClient
     .from('profiles')
     .update({
       name,
       role: role ?? 'employee',
-      department_id: departmentId ?? null,
-      manager_id: managerId
+      department_id: departmentId ?? null
     })
     .eq('id', created.user.id)
   if (updateError) {

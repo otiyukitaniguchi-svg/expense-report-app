@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useDepartments } from '../lib/useDepartments'
+import { useDepartmentApprovers } from '../lib/useDepartmentApprovers'
 import type { Profile } from '../lib/types'
 
 const inputClass =
@@ -8,6 +9,7 @@ const inputClass =
 
 export function DepartmentMaster(): JSX.Element {
   const { departments, loading, refresh } = useDepartments()
+  const { entries: approverEntries, refresh: refreshApprovers } = useDepartmentApprovers()
   const [approvers, setApprovers] = useState<Profile[]>([])
   const [newName, setNewName] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -21,17 +23,6 @@ export function DepartmentMaster(): JSX.Element {
       .then(({ data }) => setApprovers((data as Profile[]) ?? []))
   }, [])
 
-  // 部署に承認者が設定済みなのに、所属社員のmanager_idが未同期(過去のデータ)の場合に自動で追従させる
-  useEffect(() => {
-    async function syncManagers(): Promise<void> {
-      for (const d of departments) {
-        if (!d.approver_id) continue
-        await supabase.from('profiles').update({ manager_id: d.approver_id }).eq('department_id', d.id)
-      }
-    }
-    if (departments.length > 0) syncManagers()
-  }, [departments])
-
   async function addDepartment(): Promise<void> {
     if (!newName.trim()) return
     const { error: insertError } = await supabase.from('departments').insert({ name: newName.trim() })
@@ -43,17 +34,31 @@ export function DepartmentMaster(): JSX.Element {
     refresh()
   }
 
-  async function setApprover(departmentId: string, approverId: string): Promise<void> {
-    await supabase
-      .from('departments')
-      .update({ approver_id: approverId || null })
-      .eq('id', departmentId)
-    // 部署の承認者を変更した際、その部署に所属する全社員の承認者(manager_id)も追従させる
-    await supabase
-      .from('profiles')
-      .update({ manager_id: approverId || null })
+  async function addApprover(departmentId: string, approverId: string): Promise<void> {
+    if (!approverId) return
+    setError(null)
+    const { error: insertError } = await supabase
+      .from('department_approvers')
+      .insert({ department_id: departmentId, approver_id: approverId })
+    if (insertError) {
+      setError(insertError.message)
+      return
+    }
+    refreshApprovers()
+  }
+
+  async function removeApprover(departmentId: string, approverId: string): Promise<void> {
+    setError(null)
+    const { error: deleteError } = await supabase
+      .from('department_approvers')
+      .delete()
       .eq('department_id', departmentId)
-    refresh()
+      .eq('approver_id', approverId)
+    if (deleteError) {
+      setError(deleteError.message)
+      return
+    }
+    refreshApprovers()
   }
 
   async function removeDepartment(id: string): Promise<void> {
@@ -91,11 +96,11 @@ export function DepartmentMaster(): JSX.Element {
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] text-left text-base">
+          <table className="w-full min-w-[640px] text-left text-base">
             <thead>
               <tr className="border-b-2 border-gray-300 bg-blue-50 text-sm font-bold text-blue-800">
                 <th className="p-4">部署名</th>
-                <th className="p-4">承認者</th>
+                <th className="p-4">承認者(複数選択可)</th>
                 <th className="p-4 text-right">削除</th>
               </tr>
             </thead>
@@ -107,33 +112,55 @@ export function DepartmentMaster(): JSX.Element {
                   </td>
                 </tr>
               )}
-              {departments.map((d) => (
-                <tr key={d.id} className="border-b border-gray-200 last:border-0">
-                  <td className="p-4 font-semibold text-gray-900">{d.name}</td>
-                  <td className="p-4">
-                    <select
-                      value={d.approver_id ?? ''}
-                      onChange={(e) => setApprover(d.id, e.target.value)}
-                      className={inputClass}
-                    >
-                      <option value="">未設定</option>
-                      {approvers.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="p-4 text-right">
-                    <button
-                      onClick={() => removeDepartment(d.id)}
-                      className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
-                    >
-                      削除
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {departments.map((d) => {
+                const current = approverEntries.filter((a) => a.department_id === d.id)
+                const currentIds = new Set(current.map((a) => a.approver_id))
+                const candidates = approvers.filter((a) => !currentIds.has(a.id))
+                return (
+                  <tr key={d.id} className="border-b border-gray-200 last:border-0">
+                    <td className="p-4 font-semibold text-gray-900">{d.name}</td>
+                    <td className="p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {current.map((a) => (
+                          <span
+                            key={a.approver_id}
+                            className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-800"
+                          >
+                            {a.approver_name}
+                            <button
+                              onClick={() => removeApprover(d.id, a.approver_id)}
+                              className="text-blue-500 hover:text-red-600"
+                              aria-label={`${a.approver_name}を承認者から外す`}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                        <select
+                          value=""
+                          onChange={(e) => addApprover(d.id, e.target.value)}
+                          className={`${inputClass} w-32 text-xs`}
+                        >
+                          <option value="">+ 追加</option>
+                          {candidates.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </td>
+                    <td className="p-4 text-right">
+                      <button
+                        onClick={() => removeDepartment(d.id)}
+                        className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
+                      >
+                        削除
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

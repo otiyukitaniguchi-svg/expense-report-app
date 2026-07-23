@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useDepartments } from '../lib/useDepartments'
+import { useDepartmentApprovers } from '../lib/useDepartmentApprovers'
 import { PasswordInput } from '../components/PasswordInput'
 import { EmployeeFormModal } from '../components/EmployeeFormModal'
 import type { Profile, Role } from '../lib/types'
@@ -39,6 +40,7 @@ async function callAdminApi(
 
 export function EmployeeMaster(): JSX.Element {
   const { departments } = useDepartments()
+  const { entries: approverEntries } = useDepartmentApprovers()
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [emails, setEmails] = useState<Record<string, string>>({})
   const [emailDrafts, setEmailDrafts] = useState<Record<string, string>>({})
@@ -70,22 +72,15 @@ export function EmployeeMaster(): JSX.Element {
     load()
   }, [])
 
-  const departmentById = new Map(departments.map((d) => [d.id, d]))
-  const profileById = new Map(profiles.map((p) => [p.id, p]))
-
   async function updateRole(id: string, role: Role): Promise<void> {
     await supabase.from('profiles').update({ role }).eq('id', id)
     load()
   }
 
   async function updateDepartment(id: string, departmentId: string): Promise<void> {
-    const department = departmentId ? departmentById.get(departmentId) : null
     await supabase
       .from('profiles')
-      .update({
-        department_id: departmentId || null,
-        manager_id: department?.approver_id ?? null
-      })
+      .update({ department_id: departmentId || null })
       .eq('id', id)
     load()
   }
@@ -176,7 +171,9 @@ export function EmployeeMaster(): JSX.Element {
             </thead>
             <tbody>
               {profiles.map((p) => {
-                const manager = p.manager_id ? profileById.get(p.manager_id) : null
+                const approverNames = approverEntries
+                  .filter((a) => a.department_id === p.department_id)
+                  .map((a) => a.approver_name)
                 return (
                   <tr key={p.id} className="border-b border-gray-200 last:border-0">
                     <td className="p-4">
@@ -232,7 +229,9 @@ export function EmployeeMaster(): JSX.Element {
                       ))}
                     </select>
                   </td>
-                  <td className="p-4 font-semibold text-gray-700">{manager?.name ?? '-'}</td>
+                  <td className="p-4 font-semibold text-gray-700">
+                    {approverNames.length > 0 ? approverNames.join('、') : '-'}
+                  </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
                       <PasswordInput
