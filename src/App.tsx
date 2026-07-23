@@ -12,6 +12,7 @@ import { TransportationDetails } from './pages/TransportationDetails'
 import { ExpenseRules } from './pages/ExpenseRules'
 import otiLogo from './assets/oti-logo.png'
 import { currentMonthStr } from './lib/month'
+import { useVersionCheck } from './lib/useVersionCheck'
 
 type View =
   | { name: 'reportStatus' }
@@ -218,6 +219,7 @@ function Shell(): JSX.Element {
 }
 
 export default function App(): JSX.Element {
+  useVersionCheck()
   return (
     <AuthProvider>
       <Shell />
