@@ -142,8 +142,8 @@ function Shell(): JSX.Element {
           )}
           {isAdmin && (
             <>
-              <div className="mb-1 mt-4 px-3 text-xs font-bold uppercase tracking-wider text-gray-400">
-                管理者設定
+              <div className="mb-1 mt-4 px-3 text-base font-extrabold tracking-wide text-gray-800">
+                《管理者設定》
               </div>
               <NavItem
                 label="社員一覧"
