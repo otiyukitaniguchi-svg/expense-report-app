@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import nodemailer from 'nodemailer'
 
 interface AppSettingsRow {
   submission_deadline_day: number
@@ -46,13 +47,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const resendApiKey = process.env.RESEND_API_KEY
-  const fromEmail = process.env.RESEND_FROM_EMAIL
+  const smtpUser = process.env.SMTP_USER
+  const smtpPass = process.env.SMTP_PASS
 
-  if (!supabaseUrl || !serviceRoleKey || !resendApiKey || !fromEmail) {
+  if (!supabaseUrl || !serviceRoleKey || !smtpUser || !smtpPass) {
     res.status(500).json({ error: 'サーバー環境変数が設定されていません' })
     return
   }
+
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.office365.com',
+    port: 587,
+    secure: false,
+    requireTLS: true,
+    auth: { user: smtpUser, pass: smtpPass }
+  })
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false }
@@ -115,24 +124,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const email = emailById.get(profile.id)
     if (!email) continue
     try {
-      const sendRes = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: fromEmail,
-          to: [email],
-          subject: `【経費精算】締め切りのお知らせ(${deadlineLabel})`,
-          html: `<p>${profile.name} 様</p><p>経費精算の提出締め切りは <strong>${deadlineLabel}</strong> です。<br />お忘れの場合は早めにご提出ください。</p>`
-        })
+      await transporter.sendMail({
+        from: smtpUser,
+        to: email,
+        subject: `【経費精算】締め切りのお知らせ(${deadlineLabel})`,
+        html: `<p>${profile.name} 様</p><p>経費精算の提出締め切りは <strong>${deadlineLabel}</strong> です。<br />お忘れの場合は早めにご提出ください。</p>`
       })
-      if (sendRes.ok) {
-        sent++
-      } else {
-        failures.push(profile.name)
-      }
+      sent++
     } catch {
       failures.push(profile.name)
     }
