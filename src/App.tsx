@@ -9,12 +9,14 @@ import { EmployeeMaster } from './pages/EmployeeMaster'
 import { DepartmentMaster } from './pages/DepartmentMaster'
 import { Settings } from './pages/Settings'
 import { TransportationDetails } from './pages/TransportationDetails'
+import { ExpenseRules } from './pages/ExpenseRules'
 import otiLogo from './assets/oti-logo.png'
 import { currentMonthStr } from './lib/month'
 
 type View =
   | { name: 'reportStatus' }
   | { name: 'transportation' }
+  | { name: 'rules' }
   | { name: 'report'; id: string | null; month?: string }
   | { name: 'approvals' }
   | { name: 'admin' }
@@ -126,6 +128,11 @@ function Shell(): JSX.Element {
             active={view.name === 'transportation'}
             onClick={() => go({ name: 'transportation' })}
           />
+          <NavItem
+            label="経費精算ルール"
+            active={view.name === 'rules'}
+            onClick={() => go({ name: 'rules' })}
+          />
           {canApprove && (
             <NavItem
               label="承認"
@@ -193,6 +200,7 @@ function Shell(): JSX.Element {
         {view.name === 'transportation' && (
           <TransportationDetails userId={profile.id} userName={profile.name} />
         )}
+        {view.name === 'rules' && <ExpenseRules isAdmin={isAdmin} />}
         {view.name === 'approvals' && (
           <Approvals managerId={profile.id} onOpenReport={(id) => setView({ name: 'report', id })} />
         )}
