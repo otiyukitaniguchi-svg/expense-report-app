@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useDepartments } from '../lib/useDepartments'
 import { PasswordInput } from '../components/PasswordInput'
+import { EmployeeFormModal } from '../components/EmployeeFormModal'
 import type { Profile, Role } from '../lib/types'
 
 const inputClass =
@@ -13,23 +14,10 @@ const roleLabels: Record<Role, string> = {
   admin: '管理者'
 }
 
-interface NewEmployeeForm {
-  email: string
-  password: string
-  name: string
-  role: Role
-  departmentId: string
-}
-
-const emptyForm: NewEmployeeForm = {
-  email: '',
-  password: '',
-  name: '',
-  role: 'employee',
-  departmentId: ''
-}
-
-async function callAdminApi(path: string, body: unknown): Promise<{ ok: boolean; error?: string }> {
+async function callAdminApi(
+  path: string,
+  body: unknown
+): Promise<{ ok: boolean; error?: string; data?: Record<string, unknown> }> {
   const { data: sessionData } = await supabase.auth.getSession()
   const accessToken = sessionData.session?.access_token
   if (!accessToken) {
@@ -43,7 +31,7 @@ async function callAdminApi(path: string, body: unknown): Promise<{ ok: boolean;
     })
     const responseBody = await res.json()
     if (!res.ok) return { ok: false, error: responseBody.error ?? '処理に失敗しました' }
-    return { ok: true }
+    return { ok: true, data: responseBody }
   } catch {
     return { ok: false, error: '通信に失敗しました。しばらくしてから再度お試しください。' }
   }
@@ -52,14 +40,15 @@ async function callAdminApi(path: string, body: unknown): Promise<{ ok: boolean;
 export function EmployeeMaster(): JSX.Element {
   const { departments } = useDepartments()
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [emails, setEmails] = useState<Record<string, string>>({})
+  const [emailDrafts, setEmailDrafts] = useState<Record<string, string>>({})
+  const [emailMessage, setEmailMessage] = useState<Record<string, string>>({})
   const [names, setNames] = useState<Record<string, string>>({})
   const [newPasswords, setNewPasswords] = useState<Record<string, string>>({})
   const [changingPasswordFor, setChangingPasswordFor] = useState<string | null>(null)
   const [passwordMessage, setPasswordMessage] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState<NewEmployeeForm>(emptyForm)
-  const [creating, setCreating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [showAddModal, setShowAddModal] = useState(false)
 
   async function load(): Promise<void> {
     setLoading(true)
@@ -68,6 +57,13 @@ export function EmployeeMaster(): JSX.Element {
     setProfiles(list)
     setNames(Object.fromEntries(list.map((p) => [p.id, p.name])))
     setLoading(false)
+
+    const result = await callAdminApi('/api/list-employee-emails', {})
+    if (result.ok) {
+      const emailMap = (result.data?.emails as Record<string, string>) ?? {}
+      setEmails(emailMap)
+      setEmailDrafts(emailMap)
+    }
   }
 
   useEffect(() => {
@@ -101,27 +97,38 @@ export function EmployeeMaster(): JSX.Element {
     load()
   }
 
-  async function createEmployee(): Promise<void> {
-    setError(null)
-    if (!form.email.trim() || !form.password || !form.name.trim()) {
-      setError('メールアドレス・パスワード・氏名は必須です')
-      return
+  async function saveEmail(id: string): Promise<void> {
+    const email = emailDrafts[id]?.trim()
+    if (!email || email === emails[id]) return
+    setEmailMessage((prev) => ({ ...prev, [id]: '' }))
+    const result = await callAdminApi('/api/update-employee-email', { userId: id, email })
+    setEmailMessage((prev) => ({
+      ...prev,
+      [id]: result.ok ? '変更しました' : (result.error ?? '変更に失敗しました')
+    }))
+    if (result.ok) {
+      setEmails((prev) => ({ ...prev, [id]: email }))
     }
-    setCreating(true)
+  }
+
+  async function createEmployee(fields: {
+    name: string
+    email: string
+    password: string
+    role: Role
+    departmentId: string
+  }): Promise<string | null> {
     const result = await callAdminApi('/api/create-employee', {
-      email: form.email.trim(),
-      password: form.password,
-      name: form.name.trim(),
-      role: form.role,
-      departmentId: form.departmentId || null
+      email: fields.email,
+      password: fields.password,
+      name: fields.name,
+      role: fields.role,
+      departmentId: fields.departmentId || null
     })
-    setCreating(false)
-    if (!result.ok) {
-      setError(result.error ?? '社員の追加に失敗しました')
-      return
-    }
-    setForm(emptyForm)
+    if (!result.ok) return result.error ?? '社員の追加に失敗しました'
+    setShowAddModal(false)
     load()
+    return null
   }
 
   async function changePassword(id: string): Promise<void> {
@@ -144,77 +151,23 @@ export function EmployeeMaster(): JSX.Element {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-8">
-      <h1 className="text-3xl font-bold text-gray-900">社員一覧</h1>
-
-      <section className="rounded-xl border-2 border-gray-300 bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-lg font-bold text-gray-900">社員を追加</h2>
-        {error && (
-          <p className="mb-4 rounded-md border-2 border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
-            {error}
-          </p>
-        )}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-          <input
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="氏名"
-            autoComplete="off"
-            className={inputClass}
-          />
-          <input
-            type="email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            placeholder="メールアドレス(社内管理用。ログインは氏名で行います)"
-            autoComplete="off"
-            className={inputClass}
-          />
-          <PasswordInput
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            placeholder="パスワード(6文字以上)"
-            autoComplete="new-password"
-            className={inputClass}
-          />
-          <select
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
-            className={inputClass}
-          >
-            {(Object.keys(roleLabels) as Role[]).map((r) => (
-              <option key={r} value={r}>
-                {roleLabels[r]}
-              </option>
-            ))}
-          </select>
-          <select
-            value={form.departmentId}
-            onChange={(e) => setForm({ ...form, departmentId: e.target.value })}
-            className={inputClass}
-          >
-            <option value="">部署未設定</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xl font-bold text-gray-900">社員一覧</h1>
         <button
-          onClick={createEmployee}
-          disabled={creating}
-          className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+          onClick={() => setShowAddModal(true)}
+          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"
         >
-          {creating ? '追加中…' : '+ 社員を追加'}
+          + 社員を追加
         </button>
-      </section>
+      </div>
 
       <section className="rounded-xl border-2 border-gray-300 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] text-left text-base">
+          <table className="w-full min-w-[1000px] text-left text-base">
             <thead>
               <tr className="border-b-2 border-gray-300 bg-blue-50 text-sm font-bold text-blue-800">
                 <th className="p-4">氏名</th>
+                <th className="p-4">メールアドレス</th>
                 <th className="p-4">役割</th>
                 <th className="p-4">部署</th>
                 <th className="p-4">承認者</th>
@@ -233,6 +186,24 @@ export function EmployeeMaster(): JSX.Element {
                         onBlur={() => saveName(p.id)}
                         className={`${inputClass} w-40 font-bold text-gray-900`}
                       />
+                    </td>
+                    <td className="p-4">
+                      <input
+                        type="email"
+                        value={emailDrafts[p.id] ?? ''}
+                        onChange={(e) => setEmailDrafts({ ...emailDrafts, [p.id]: e.target.value })}
+                        onBlur={() => saveEmail(p.id)}
+                        className={`${inputClass} w-52`}
+                      />
+                      {emailMessage[p.id] && (
+                        <p
+                          className={`mt-1 text-xs font-semibold ${
+                            emailMessage[p.id] === '変更しました' ? 'text-emerald-600' : 'text-red-600'
+                          }`}
+                        >
+                          {emailMessage[p.id]}
+                        </p>
+                      )}
                     </td>
                   <td className="p-4">
                     <select
@@ -298,6 +269,15 @@ export function EmployeeMaster(): JSX.Element {
           </table>
         </div>
       </section>
+
+      {showAddModal && (
+        <EmployeeFormModal
+          departments={departments}
+          roleLabels={roleLabels}
+          onSave={createEmployee}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
     </div>
   )
 }

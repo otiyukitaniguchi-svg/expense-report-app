@@ -21,6 +21,17 @@ export function DepartmentMaster(): JSX.Element {
       .then(({ data }) => setApprovers((data as Profile[]) ?? []))
   }, [])
 
+  // 部署に承認者が設定済みなのに、所属社員のmanager_idが未同期(過去のデータ)の場合に自動で追従させる
+  useEffect(() => {
+    async function syncManagers(): Promise<void> {
+      for (const d of departments) {
+        if (!d.approver_id) continue
+        await supabase.from('profiles').update({ manager_id: d.approver_id }).eq('department_id', d.id)
+      }
+    }
+    if (departments.length > 0) syncManagers()
+  }, [departments])
+
   async function addDepartment(): Promise<void> {
     if (!newName.trim()) return
     const { error: insertError } = await supabase.from('departments').insert({ name: newName.trim() })
@@ -37,6 +48,11 @@ export function DepartmentMaster(): JSX.Element {
       .from('departments')
       .update({ approver_id: approverId || null })
       .eq('id', departmentId)
+    // 部署の承認者を変更した際、その部署に所属する全社員の承認者(manager_id)も追従させる
+    await supabase
+      .from('profiles')
+      .update({ manager_id: approverId || null })
+      .eq('department_id', departmentId)
     refresh()
   }
 
