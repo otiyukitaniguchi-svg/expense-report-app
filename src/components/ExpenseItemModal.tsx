@@ -59,8 +59,8 @@ export function ExpenseItemModal({ initialItem, categories, onSave, onClose }: P
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <div className="mb-5 flex items-center justify-between">
+      <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-gray-100 p-6 pb-4">
           <h2 className="text-lg font-bold text-gray-900">
             {initialItem ? '経費の編集' : '経費を新規追加'}
           </h2>
@@ -73,9 +73,12 @@ export function ExpenseItemModal({ initialItem, categories, onSave, onClose }: P
           </button>
         </div>
 
-        {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+        <div className="overflow-y-auto px-6 py-4">
+          {error && (
+            <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+          )}
 
-        <div className="space-y-4">
+          <div className="space-y-4">
           <div>
             <label className={labelClass}>日付</label>
             <input
@@ -152,9 +155,10 @@ export function ExpenseItemModal({ initialItem, categories, onSave, onClose }: P
               className={fieldClass}
             />
           </div>
+          </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-4">
+        <div className="flex justify-end gap-3 border-t border-gray-100 p-6 pt-4">
           <button
             onClick={onClose}
             className="rounded-md border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"

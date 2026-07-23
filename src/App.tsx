@@ -198,7 +198,11 @@ function Shell(): JSX.Element {
           />
         )}
         {view.name === 'transportation' && (
-          <TransportationDetails userId={profile.id} userName={profile.name} />
+          <TransportationDetails
+            userId={profile.id}
+            userName={profile.name}
+            onBack={() => go({ name: 'report', id: null, month: currentMonthStr() })}
+          />
         )}
         {view.name === 'rules' && <ExpenseRules isAdmin={isAdmin} />}
         {view.name === 'approvals' && (
