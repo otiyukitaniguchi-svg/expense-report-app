@@ -166,12 +166,12 @@ export function EmployeeMaster(): JSX.Element {
           <table className="w-full min-w-[1000px] text-left text-base">
             <thead>
               <tr className="border-b-2 border-gray-300 bg-blue-50 text-sm font-bold text-blue-800">
-                <th className="p-4">氏名</th>
-                <th className="p-4">メールアドレス</th>
-                <th className="p-4">役割</th>
-                <th className="p-4">部署</th>
-                <th className="p-4">承認者</th>
-                <th className="p-4">パスワード変更</th>
+                <th className="p-4 text-center">氏名</th>
+                <th className="p-4 text-center">メールアドレス</th>
+                <th className="p-4 text-center">役割</th>
+                <th className="p-4 text-center">部署</th>
+                <th className="p-4 text-center">承認者</th>
+                <th className="p-4 text-center">パスワード変更</th>
               </tr>
             </thead>
             <tbody>
