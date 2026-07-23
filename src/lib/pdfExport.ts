@@ -36,7 +36,7 @@ const PDF_STYLE = `
   * { color: #000; }
   body { font-family: "Yu Gothic", "Meiryo", sans-serif; font-size: 15px; padding: 10px; }
   h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
-  p.meta { font-size: 14px; margin: 0 0 10px; }
+  p.meta { font-size: 14px; margin: 0 0 10px; color: #000; font-weight: 700; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
   th, td { border: 1.5px solid #333; padding: 8px 10px; text-align: left; }
   th { background: #cbd2db; font-weight: 700; }
