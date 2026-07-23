@@ -9,6 +9,7 @@ export function Settings(): JSX.Element {
   const { settings, loading, refresh } = useAppSettings()
   const [startDay, setStartDay] = useState(1)
   const [endDay, setEndDay] = useState(31)
+  const [deadlineDay, setDeadlineDay] = useState(31)
   const [fuelPrice, setFuelPrice] = useState(170)
   const [fuelEfficiency, setFuelEfficiency] = useState(15)
   const [seasonalIndexSummer, setSeasonalIndexSummer] = useState(1)
@@ -20,6 +21,7 @@ export function Settings(): JSX.Element {
     if (settings) {
       setStartDay(settings.submission_start_day)
       setEndDay(settings.submission_end_day)
+      setDeadlineDay(settings.submission_deadline_day)
       setFuelPrice(settings.fuel_price_per_liter)
       setFuelEfficiency(settings.fuel_efficiency_km_per_liter)
       setSeasonalIndexSummer(settings.seasonal_index_summer)
@@ -35,6 +37,7 @@ export function Settings(): JSX.Element {
       .update({
         submission_start_day: startDay,
         submission_end_day: endDay,
+        submission_deadline_day: deadlineDay,
         fuel_price_per_liter: fuelPrice,
         fuel_efficiency_km_per_liter: fuelEfficiency,
         seasonal_index_summer: seasonalIndexSummer,
@@ -79,6 +82,25 @@ export function Settings(): JSX.Element {
             onChange={(e) => setEndDay(Number(e.target.value))}
             className={inputClass}
           />
+          <span className="text-sm font-bold text-gray-700">日</span>
+        </div>
+
+        <h2 className="mb-1 mt-6 text-lg font-bold text-gray-900">締め切り日</h2>
+        <p className="mb-4 text-sm font-medium text-gray-600">
+          毎月この日までに申請を提出してください、という締め切りの目安日です。
+        </p>
+        <div className="flex items-center gap-3">
+          <select
+            value={deadlineDay}
+            onChange={(e) => setDeadlineDay(Number(e.target.value))}
+            className={inputClass}
+          >
+            {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+              <option key={day} value={day}>
+                {day}
+              </option>
+            ))}
+          </select>
           <span className="text-sm font-bold text-gray-700">日</span>
         </div>
       </section>
@@ -149,7 +171,7 @@ export function Settings(): JSX.Element {
         {saving ? '保存中…' : '保存'}
       </button>
 
-      <p className="text-sm font-medium text-gray-500">その他の詳細設定(締め日など)は今後追加予定です。</p>
+      <p className="text-sm font-medium text-gray-500">その他の詳細設定は今後追加予定です。</p>
     </div>
   )
 }
