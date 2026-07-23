@@ -254,15 +254,21 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
         &lt; 一覧に戻る
       </button>
 
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <input
-          value={title}
-          disabled={readOnly}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={saveTitle}
-          className="w-full rounded-md border-2 border-transparent bg-transparent px-1 text-2xl font-bold text-gray-900 transition focus:border-blue-300 focus:bg-blue-50/40 focus:outline-none disabled:text-gray-900 md:w-80 md:text-3xl"
-        />
-        <StatusBadge status={report.status} />
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        {isMonthMode ? (
+          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">経費登録</h1>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              value={title}
+              disabled={readOnly}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={saveTitle}
+              className="w-full rounded-md border-2 border-transparent bg-transparent px-1 text-2xl font-bold text-gray-900 transition focus:border-blue-300 focus:bg-blue-50/40 focus:outline-none disabled:text-gray-900 md:w-80 md:text-3xl"
+            />
+            <StatusBadge status={report.status} />
+          </div>
+        )}
         {isMonthMode && (
           <select
             value={selectedMonth}
