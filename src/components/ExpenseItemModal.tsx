@@ -4,7 +4,7 @@ import type { ExpenseCategory, ExpenseItem } from '../lib/types'
 interface Props {
   initialItem: ExpenseItem | null
   categories: ExpenseCategory[]
-  onSave: (item: Omit<ExpenseItem, 'id' | 'report_id'>) => Promise<void>
+  onSave: (item: Omit<ExpenseItem, 'id' | 'report_id' | 'sort_order'>) => Promise<void>
   onClose: () => void
 }
 

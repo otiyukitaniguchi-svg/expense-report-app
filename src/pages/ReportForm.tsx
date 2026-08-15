@@ -41,6 +41,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
   const [ownerName, setOwnerName] = useState('')
   const [ownerDepartment, setOwnerDepartment] = useState('-')
   const [exporting, setExporting] = useState(false)
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null)
 
   const isMonthMode = !fixedReportId
 
@@ -96,7 +97,11 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
   }, [fixedReportId, selectedMonth, userId])
 
   async function loadItems(id: string): Promise<void> {
-    const { data } = await supabase.from('expense_items').select('*').eq('report_id', id).order('date')
+    const { data } = await supabase
+      .from('expense_items')
+      .select('*')
+      .eq('report_id', id)
+      .order('sort_order')
     setItems((data as ExpenseItem[]) ?? [])
     setSelectedItemIds(new Set())
   }
@@ -121,7 +126,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
       setLoading(true)
       const [{ data: reportData }, { data: itemsData }] = await Promise.all([
         supabase.from('expense_reports').select('*').eq('id', reportId).single(),
-        supabase.from('expense_items').select('*').eq('report_id', reportId).order('date')
+        supabase.from('expense_items').select('*').eq('report_id', reportId).order('sort_order')
       ])
       if (!active) return
       setReport(reportData as ExpenseReport)
@@ -199,11 +204,16 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
     }
   }
 
-  async function saveItem(fields: Omit<ExpenseItem, 'id' | 'report_id'>): Promise<void> {
+  async function saveItem(fields: Omit<ExpenseItem, 'id' | 'report_id' | 'sort_order'>): Promise<void> {
     if (!report) return
     setError(null)
     if (modalState.mode === 'create') {
-      const newItem: ExpenseItem = { id: crypto.randomUUID(), report_id: report.id, ...fields }
+      const newItem: ExpenseItem = {
+        id: crypto.randomUUID(),
+        report_id: report.id,
+        sort_order: items.length,
+        ...fields
+      }
       const { error: insertError } = await supabase.from('expense_items').insert(newItem)
       if (insertError) {
         setError(insertError.message)
@@ -221,6 +231,32 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
     }
     setModalState({ mode: 'closed' })
     loadItems(report.id)
+  }
+
+  function handleDragStart(id: string): void {
+    setDraggedItemId(id)
+  }
+
+  function handleDragOver(e: React.DragEvent<HTMLTableRowElement>): void {
+    e.preventDefault()
+  }
+
+  async function handleDrop(overId: string): Promise<void> {
+    const fromId = draggedItemId
+    setDraggedItemId(null)
+    if (!fromId || fromId === overId) return
+    const fromIndex = items.findIndex((i) => i.id === fromId)
+    const toIndex = items.findIndex((i) => i.id === overId)
+    if (fromIndex === -1 || toIndex === -1) return
+    const reordered = [...items]
+    const [moved] = reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, moved)
+    setItems(reordered)
+    await Promise.all(
+      reordered.map((item, index) =>
+        supabase.from('expense_items').update({ sort_order: index }).eq('id', item.id)
+      )
+    )
   }
 
   async function removeItem(id: string): Promise<void> {
@@ -388,6 +424,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
           <table className="w-full min-w-[880px] text-left text-base">
             <thead>
               <tr className="border-b-2 border-gray-300 bg-gray-100 text-sm font-bold text-gray-700">
+                {!readOnly && <th className="w-6 p-2" aria-label="並び替え" />}
                 {isMonthMode && !readOnly && (
                   <th className="w-8 p-2">
                     <input
@@ -410,7 +447,21 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.id} className="border-b border-gray-200 last:border-0 hover:bg-gray-50">
+                <tr
+                  key={item.id}
+                  draggable={!readOnly}
+                  onDragStart={() => handleDragStart(item.id)}
+                  onDragOver={handleDragOver}
+                  onDrop={() => handleDrop(item.id)}
+                  className={`border-b border-gray-200 last:border-0 hover:bg-gray-50 ${
+                    draggedItemId === item.id ? 'opacity-40' : ''
+                  }`}
+                >
+                  {!readOnly && (
+                    <td className="cursor-grab p-3 text-center text-gray-400" title="ドラッグして並び替え">
+                      ⠿
+                    </td>
+                  )}
                   {isMonthMode && !readOnly && (
                     <td className="p-3">
                       <input
@@ -456,7 +507,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="p-6 text-center text-sm text-gray-500">
+                  <td colSpan={10} className="p-6 text-center text-sm text-gray-500">
                     明細がまだありません。「+ 明細を追加」から入力してください。
                   </td>
                 </tr>

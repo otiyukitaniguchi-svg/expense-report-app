@@ -61,6 +61,7 @@ export interface ExpenseItem {
   payee: string | null
   invoice_number: string | null
   memo: string | null
+  sort_order: number
 }
 
 export interface TransportationRoute {
