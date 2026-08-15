@@ -168,7 +168,7 @@ export function TransportationDetails({
   const total = filteredRoutes.reduce((sum, r) => sum + Number(r.amount), 0)
 
   return (
-    <div className="mx-auto max-w-6xl p-4 md:p-8">
+    <div className="w-full p-4 md:p-8">
       <button
         onClick={onBack}
         className="mb-4 text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline"
@@ -310,14 +310,14 @@ export function TransportationDetails({
                     className="h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-200"
                   />
                 </th>
-                <th className="p-3">日付</th>
+                <th className="whitespace-nowrap p-3">日付</th>
                 <th className="p-3">出発地</th>
                 <th className="p-3">到着地</th>
-                <th className="p-3">距離(km)</th>
-                <th className="p-3">金額</th>
+                <th className="whitespace-nowrap p-3">距離(km)</th>
+                <th className="whitespace-nowrap p-3">金額</th>
                 <th className="p-3">案件名</th>
                 <th className="p-3">備考</th>
-                <th className="p-3 text-right">操作</th>
+                <th className="whitespace-nowrap p-3 text-right">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -344,14 +344,16 @@ export function TransportationDetails({
                         className="h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-200"
                       />
                     </td>
-                    <td className="p-3 font-medium text-gray-900">{r.date}</td>
+                    <td className="whitespace-nowrap p-3 font-medium text-gray-900">{r.date}</td>
                     <td className="p-3 text-gray-900">{r.departure}</td>
                     <td className="p-3 text-gray-900">{r.arrival}</td>
-                    <td className="p-3 text-gray-900">{r.distance_km}</td>
-                    <td className="p-3 font-bold text-gray-900">{Number(r.amount).toLocaleString()} 円</td>
+                    <td className="whitespace-nowrap p-3 text-gray-900">{r.distance_km}</td>
+                    <td className="whitespace-nowrap p-3 font-bold text-gray-900">
+                      {Number(r.amount).toLocaleString()} 円
+                    </td>
                     <td className="p-3 text-gray-900">{r.project_name ?? '-'}</td>
                     <td className="p-3 text-gray-900">{r.memo ?? '-'}</td>
-                    <td className="p-3">
+                    <td className="whitespace-nowrap p-3">
                       <div className="flex justify-end gap-3">
                         <button
                           onClick={() => setModalState({ mode: 'edit', item: r })}
