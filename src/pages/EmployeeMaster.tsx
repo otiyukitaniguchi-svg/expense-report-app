@@ -8,7 +8,8 @@ import { EmployeeFuelModal } from '../components/EmployeeFuelModal'
 import type { Profile, Role } from '../lib/types'
 
 const inputClass =
-  'rounded-md border-2 border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100'
+  'w-full rounded-md border-2 border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100'
+const fieldLabelClass = 'mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500'
 
 const roleLabels: Record<Role, string> = {
   employee: '一般ユーザー',
@@ -159,7 +160,7 @@ export function EmployeeMaster(): JSX.Element {
   if (loading) return <p className="p-8 text-sm text-gray-500">読み込み中…</p>
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-8">
+    <div className="mx-auto max-w-5xl space-y-8 p-4 md:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold text-gray-900">社員一覧</h1>
         <button
@@ -170,133 +171,130 @@ export function EmployeeMaster(): JSX.Element {
         </button>
       </div>
 
-      <section className="rounded-xl border-2 border-gray-300 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1120px] text-left text-base">
-            <thead>
-              <tr className="border-b-2 border-gray-300 bg-blue-50 text-sm font-bold text-blue-800">
-                <th className="p-4 text-center">氏名</th>
-                <th className="p-4 text-center">メールアドレス</th>
-                <th className="p-4 text-center">役割</th>
-                <th className="p-4 text-center">部署</th>
-                <th className="p-4 text-center">承認者</th>
-                <th className="p-4 text-center">燃費設定</th>
-                <th className="p-4 text-center">パスワード変更</th>
-              </tr>
-            </thead>
-            <tbody>
-              {profiles.map((p) => {
-                const approverNames = approverEntries
-                  .filter((a) => a.department_id === p.department_id)
-                  .map((a) => a.approver_name)
-                return (
-                  <tr key={p.id} className="border-b border-gray-200 last:border-0">
-                    <td className="p-4">
-                      <input
-                        value={names[p.id] ?? ''}
-                        onChange={(e) => setNames({ ...names, [p.id]: e.target.value })}
-                        onBlur={() => saveName(p.id)}
-                        className={`${inputClass} w-40 font-bold text-gray-900`}
-                      />
-                    </td>
-                    <td className="p-4">
-                      <input
-                        type="email"
-                        value={emailDrafts[p.id] ?? ''}
-                        onChange={(e) => setEmailDrafts({ ...emailDrafts, [p.id]: e.target.value })}
-                        onBlur={() => saveEmail(p.id)}
-                        className={`${inputClass} w-52`}
-                      />
-                      {emailMessage[p.id] && (
-                        <p
-                          className={`mt-1 text-xs font-semibold ${
-                            emailMessage[p.id] === '変更しました' ? 'text-emerald-600' : 'text-red-600'
-                          }`}
-                        >
-                          {emailMessage[p.id]}
-                        </p>
-                      )}
-                    </td>
-                  <td className="p-4">
-                    <select
-                      value={p.role}
-                      onChange={(e) => updateRole(p.id, e.target.value as Role)}
-                      className={inputClass}
+      <div className="space-y-4">
+        {profiles.map((p) => {
+          const approverNames = approverEntries
+            .filter((a) => a.department_id === p.department_id)
+            .map((a) => a.approver_name)
+          const hasFuelOverride =
+            p.fuel_price_per_liter !== null ||
+            p.fuel_efficiency_km_per_liter !== null ||
+            p.seasonal_index_summer !== null ||
+            p.seasonal_index_winter !== null
+
+          return (
+            <section
+              key={p.id}
+              className="rounded-xl border-2 border-gray-300 bg-white p-5 shadow-sm"
+            >
+              <div className="mb-4 flex flex-wrap items-center gap-3 border-b-2 border-gray-100 pb-4">
+                <input
+                  value={names[p.id] ?? ''}
+                  onChange={(e) => setNames({ ...names, [p.id]: e.target.value })}
+                  onBlur={() => saveName(p.id)}
+                  className="w-52 rounded-md border-2 border-gray-300 bg-white px-3 py-2 text-lg font-bold text-gray-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                />
+                <select
+                  value={p.role}
+                  onChange={(e) => updateRole(p.id, e.target.value as Role)}
+                  className="rounded-full border-2 border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-bold text-blue-800"
+                >
+                  {(Object.keys(roleLabels) as Role[]).map((r) => (
+                    <option key={r} value={r}>
+                      {roleLabels[r]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <label className={fieldLabelClass}>メールアドレス</label>
+                  <input
+                    type="email"
+                    value={emailDrafts[p.id] ?? ''}
+                    onChange={(e) => setEmailDrafts({ ...emailDrafts, [p.id]: e.target.value })}
+                    onBlur={() => saveEmail(p.id)}
+                    className={inputClass}
+                  />
+                  {emailMessage[p.id] && (
+                    <p
+                      className={`mt-1 text-xs font-semibold ${
+                        emailMessage[p.id] === '変更しました' ? 'text-emerald-600' : 'text-red-600'
+                      }`}
                     >
-                      {(Object.keys(roleLabels) as Role[]).map((r) => (
-                        <option key={r} value={r}>
-                          {roleLabels[r]}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="p-4">
-                    <select
-                      value={p.department_id ?? ''}
-                      onChange={(e) => updateDepartment(p.id, e.target.value)}
-                      className={inputClass}
-                    >
-                      <option value="">未設定</option>
-                      {departments.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="p-4 font-semibold text-gray-700">
+                      {emailMessage[p.id]}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className={fieldLabelClass}>部署</label>
+                  <select
+                    value={p.department_id ?? ''}
+                    onChange={(e) => updateDepartment(p.id, e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">未設定</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className={fieldLabelClass}>承認者</label>
+                  <p className="rounded-md border-2 border-transparent px-3 py-2 text-sm font-semibold text-gray-700">
                     {approverNames.length > 0 ? approverNames.join('、') : '-'}
-                  </td>
-                  <td className="p-4 text-center">
-                    <button
-                      onClick={() => setFuelModalFor(p)}
-                      className="rounded-md border-2 border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                  </p>
+                </div>
+
+                <div>
+                  <label className={fieldLabelClass}>燃費設定</label>
+                  <button
+                    onClick={() => setFuelModalFor(p)}
+                    className="w-full rounded-md border-2 border-gray-300 px-3 py-2 text-sm font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                  >
+                    {hasFuelOverride ? '個別設定あり' : '会社共通設定'}
+                    {hasFuelOverride && <span className="ml-1.5 text-emerald-600">●</span>}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 border-t-2 border-gray-100 pt-4">
+                <label className={fieldLabelClass}>パスワード変更</label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <PasswordInput
+                    value={newPasswords[p.id] ?? ''}
+                    onChange={(e) => setNewPasswords({ ...newPasswords, [p.id]: e.target.value })}
+                    placeholder="新しいパスワード"
+                    autoComplete="new-password"
+                    className={`${inputClass} w-56`}
+                  />
+                  <button
+                    onClick={() => changePassword(p.id)}
+                    disabled={changingPasswordFor === p.id || !newPasswords[p.id]}
+                    className="whitespace-nowrap rounded-md border-2 border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+                  >
+                    {changingPasswordFor === p.id ? '変更中…' : '変更'}
+                  </button>
+                  {passwordMessage[p.id] && (
+                    <p
+                      className={`text-xs font-semibold ${
+                        passwordMessage[p.id] === '変更しました' ? 'text-emerald-600' : 'text-red-600'
+                      }`}
                     >
-                      設定
-                      {(p.fuel_price_per_liter !== null ||
-                        p.fuel_efficiency_km_per_liter !== null ||
-                        p.seasonal_index_summer !== null ||
-                        p.seasonal_index_winter !== null) && (
-                        <span className="ml-1 text-emerald-600">●</span>
-                      )}
-                    </button>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <PasswordInput
-                        value={newPasswords[p.id] ?? ''}
-                        onChange={(e) =>
-                          setNewPasswords({ ...newPasswords, [p.id]: e.target.value })
-                        }
-                        placeholder="新しいパスワード"
-                        autoComplete="new-password"
-                        className={`${inputClass} w-36`}
-                      />
-                      <button
-                        onClick={() => changePassword(p.id)}
-                        disabled={changingPasswordFor === p.id || !newPasswords[p.id]}
-                        className="whitespace-nowrap rounded-md border-2 border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
-                      >
-                        {changingPasswordFor === p.id ? '変更中…' : '変更'}
-                      </button>
-                    </div>
-                    {passwordMessage[p.id] && (
-                      <p
-                        className={`mt-1 text-xs font-semibold ${
-                          passwordMessage[p.id] === '変更しました' ? 'text-emerald-600' : 'text-red-600'
-                        }`}
-                      >
-                        {passwordMessage[p.id]}
-                      </p>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-            </tbody>
-          </table>
-        </div>
-      </section>
+                      {passwordMessage[p.id]}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
+          )
+        })}
+      </div>
 
       {showAddModal && (
         <EmployeeFormModal
