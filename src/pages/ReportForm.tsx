@@ -19,12 +19,13 @@ interface Props {
   userId: string
   reportId: string | null
   month?: string
+  isAdmin: boolean
   onDone: () => void
 }
 
 type ModalState = { mode: 'closed' } | { mode: 'create' } | { mode: 'edit'; item: ExpenseItem }
 
-export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: Props): JSX.Element {
+export function ReportForm({ userId, reportId: fixedReportId, month, isAdmin, onDone }: Props): JSX.Element {
   const { categories, taxCategories } = useLookups()
   const { settings } = useAppSettings()
   const [selectedMonth, setSelectedMonth] = useState(month ?? currentMonthStr())
@@ -102,8 +103,12 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
       .select('*')
       .eq('report_id', id)
       .order('sort_order')
-    setItems((data as ExpenseItem[]) ?? [])
+    const list = (data as ExpenseItem[]) ?? []
+    setItems(list)
     setSelectedItemIds(new Set())
+    // 明細の増減・金額変更を申請の合計金額に常に反映しておく(一覧画面等での表示のズレ防止)
+    const newTotal = list.reduce((sum, i) => sum + Number(i.amount || 0), 0)
+    await supabase.from('expense_reports').update({ total_amount: newTotal }).eq('id', id)
   }
 
   function toggleItemSelected(id: string): void {
@@ -153,7 +158,8 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
     }
   }, [reportId])
 
-  const readOnly = report?.status === 'submitted' || report?.status === 'approved'
+  const isOwner = report?.user_id === userId
+  const readOnly = (report?.status === 'submitted' || report?.status === 'approved') && !isAdmin
   const total = items.reduce((sum, item) => sum + Number(item.amount || 0), 0)
   const dayOfMonth = new Date().getDate()
   const withinSubmissionPeriod =
@@ -264,6 +270,18 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
     if (!report) return
     await supabase.from('expense_items').delete().eq('id', id)
     loadItems(report.id)
+  }
+
+  async function deleteReport(): Promise<void> {
+    if (!report) return
+    if (!window.confirm('この申請を削除しますか?この操作は取り消せません。')) return
+    setError(null)
+    const { error: deleteError } = await supabase.from('expense_reports').delete().eq('id', report.id)
+    if (deleteError) {
+      setError(deleteError.message)
+      return
+    }
+    onDone()
   }
 
   async function submitReport(): Promise<void> {
@@ -400,6 +418,11 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
           {successMessage}
         </p>
       )}
+      {isAdmin && !isOwner && (report.status === 'submitted' || report.status === 'approved') && (
+        <p className="mb-4 rounded-md border-2 border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700">
+          管理者権限で編集しています。他の社員の{statusLabels[report.status]}の申請です。
+        </p>
+      )}
 
       <div className="rounded-xl border-2 border-gray-300 bg-white p-6 shadow-sm">
         {!readOnly && (
@@ -525,14 +548,25 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
         </div>
       </div>
 
-      <div className="mt-6 flex justify-end gap-3">
+      <div className="mt-6 flex items-center justify-between gap-3">
+        {isAdmin && !isMonthMode ? (
+          <button
+            onClick={deleteReport}
+            className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
+          >
+            この申請を削除する
+          </button>
+        ) : (
+          <span />
+        )}
+        <div className="flex justify-end gap-3">
         <button
           onClick={onDone}
           className="rounded-md border-2 border-gray-300 px-5 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50"
         >
           一覧に戻る
         </button>
-        {!readOnly && (
+        {!readOnly && isOwner && (
           <div className="flex flex-col items-end gap-1">
             <button
               onClick={submitReport}
@@ -557,6 +591,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
             )}
           </div>
         )}
+        </div>
       </div>
 
       {modalState.mode !== 'closed' && (

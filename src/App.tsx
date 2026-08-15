@@ -195,6 +195,7 @@ function Shell(): JSX.Element {
             userId={profile.id}
             reportId={view.id}
             month={view.month}
+            isAdmin={isAdmin}
             onDone={() =>
               setView(view.returnTo === 'approvals' ? { name: 'approvals' } : { name: 'reportStatus' })
             }
@@ -205,6 +206,7 @@ function Shell(): JSX.Element {
             userId={profile.id}
             userName={profile.name}
             profile={profile}
+            isAdmin={isAdmin}
             onBack={() => go({ name: 'report', id: null, month: currentMonthStr() })}
           />
         )}

@@ -10,14 +10,22 @@ interface Props {
   userId: string
   userName: string
   profile: Profile
+  isAdmin: boolean
   onBack: () => void
 }
 
 type ModalState = { mode: 'closed' } | { mode: 'create' } | { mode: 'edit'; item: TransportationRoute }
 
-export function TransportationDetails({ userId, userName, profile, onBack }: Props): JSX.Element {
+export function TransportationDetails({
+  userId,
+  userName,
+  profile,
+  isAdmin,
+  onBack
+}: Props): JSX.Element {
   const { settings: globalSettings } = useAppSettings()
-  const settings = globalSettings ? resolveEffectiveFuelSettings(globalSettings, profile) : null
+  const [employees, setEmployees] = useState<Profile[]>([])
+  const [viewingUserId, setViewingUserId] = useState(userId)
   const [routes, setRoutes] = useState<TransportationRoute[]>([])
   const [loading, setLoading] = useState(true)
   const [modalState, setModalState] = useState<ModalState>({ mode: 'closed' })
@@ -26,12 +34,28 @@ export function TransportationDetails({ userId, userName, profile, onBack }: Pro
   const [monthFilter, setMonthFilter] = useState('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
+  useEffect(() => {
+    if (!isAdmin) return
+    supabase
+      .from('profiles')
+      .select('*')
+      .order('name')
+      .then(({ data }) => setEmployees((data as Profile[]) ?? []))
+  }, [isAdmin])
+
+  const viewingProfile = isAdmin ? (employees.find((e) => e.id === viewingUserId) ?? profile) : profile
+  const viewingUserName =
+    isAdmin && viewingUserId !== userId
+      ? (employees.find((e) => e.id === viewingUserId)?.name ?? userName)
+      : userName
+  const settings = globalSettings ? resolveEffectiveFuelSettings(globalSettings, viewingProfile) : null
+
   async function load(): Promise<void> {
     setLoading(true)
     const { data } = await supabase
       .from('transportation_routes')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', viewingUserId)
       .order('date', { ascending: false })
     setRoutes((data as TransportationRoute[]) ?? [])
     setLoading(false)
@@ -39,7 +63,8 @@ export function TransportationDetails({ userId, userName, profile, onBack }: Pro
 
   useEffect(() => {
     load()
-  }, [userId])
+    setSelectedIds(new Set())
+  }, [viewingUserId])
 
   async function saveRoute(
     fields: Omit<TransportationRoute, 'id' | 'user_id' | 'created_at'>
@@ -48,7 +73,7 @@ export function TransportationDetails({ userId, userName, profile, onBack }: Pro
     if (modalState.mode === 'create') {
       const { error: insertError } = await supabase
         .from('transportation_routes')
-        .insert({ user_id: userId, ...fields })
+        .insert({ user_id: viewingUserId, ...fields })
       if (insertError) {
         setError(insertError.message)
         return
@@ -127,7 +152,7 @@ export function TransportationDetails({ userId, userName, profile, onBack }: Pro
           projectName: r.project_name ?? '',
           memo: r.memo ?? ''
         })),
-        userName,
+        viewingUserName,
         '交通費詳細'
       )
       printWindow.document.open()
@@ -154,6 +179,22 @@ export function TransportationDetails({ userId, userName, profile, onBack }: Pro
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold text-gray-900">交通費詳細</h1>
+          {isAdmin && (
+            <select
+              value={viewingUserId}
+              onChange={(e) => setViewingUserId(e.target.value)}
+              className="rounded-md border-2 border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-bold text-blue-800"
+            >
+              <option value={userId}>自分({userName})</option>
+              {employees
+                .filter((e) => e.id !== userId)
+                .map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
+            </select>
+          )}
           <select
             value={monthFilter}
             onChange={(e) => setMonthFilter(e.target.value)}
