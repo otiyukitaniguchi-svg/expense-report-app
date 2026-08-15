@@ -187,6 +187,7 @@ function Shell(): JSX.Element {
           <ReportStatus
             userId={profile.id}
             userName={profile.name}
+            isAdmin={isAdmin}
             onOpenReport={(id) => setView({ name: 'report', id, returnTo: 'reportStatus' })}
           />
         )}

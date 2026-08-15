@@ -4,11 +4,12 @@ import { useLookups } from '../lib/useLookups'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatMonthLabel, monthOfDateStr, recentMonths } from '../lib/month'
 import { buildSingleReportSlipHtml } from '../lib/pdfExport'
-import type { ExpenseItem, ExpenseReport } from '../lib/types'
+import type { ExpenseItem, ExpenseReport, Profile } from '../lib/types'
 
 interface Props {
   userId: string
   userName: string
+  isAdmin: boolean
   onOpenReport: (id: string) => void
 }
 
@@ -19,8 +20,10 @@ const statusLabels: Record<ExpenseReport['status'], string> = {
   rejected: '差し戻し'
 }
 
-export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Element {
+export function ReportStatus({ userId, userName, isAdmin, onOpenReport }: Props): JSX.Element {
   const { categories } = useLookups()
+  const [employees, setEmployees] = useState<Profile[]>([])
+  const [viewingUserId, setViewingUserId] = useState(userId)
   const [reports, setReports] = useState<ExpenseReport[]>([])
   const [departmentName, setDepartmentName] = useState('-')
   const [loading, setLoading] = useState(true)
@@ -29,12 +32,26 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
   const [error, setError] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
+  const viewingUserName =
+    isAdmin && viewingUserId !== userId
+      ? (employees.find((e) => e.id === viewingUserId)?.name ?? userName)
+      : userName
+
+  useEffect(() => {
+    if (!isAdmin) return
+    supabase
+      .from('profiles')
+      .select('*')
+      .order('name')
+      .then(({ data }) => setEmployees((data as Profile[]) ?? []))
+  }, [isAdmin])
+
   async function load(): Promise<void> {
     setLoading(true)
     const { data } = await supabase
       .from('expense_reports')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', viewingUserId)
       .in('status', ['submitted', 'approved', 'rejected'])
       .order('submitted_at', { ascending: false })
     setReports((data as ExpenseReport[]) ?? [])
@@ -43,19 +60,20 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
 
   useEffect(() => {
     load()
-  }, [userId])
+    setSelectedIds(new Set())
+  }, [viewingUserId])
 
   useEffect(() => {
     supabase
       .from('profiles')
       .select('department_id, departments(name)')
-      .eq('id', userId)
+      .eq('id', viewingUserId)
       .single()
       .then(({ data }) => {
         const departments = (data as { departments: { name: string } | null } | null)?.departments
         setDepartmentName(departments?.name ?? '-')
       })
-  }, [userId])
+  }, [viewingUserId])
 
   async function deleteReport(id: string): Promise<void> {
     if (!window.confirm('この申請を削除しますか?この操作は取り消せません。')) return
@@ -90,7 +108,7 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
       }
       const categoryNameById = new Map(categories.map((c) => [c.id, c.name]))
       const html = buildSingleReportSlipHtml({
-        employeeName: userName,
+        employeeName: viewingUserName,
         departmentName,
         statusLabel: statusLabels[report.status],
         submittedAtLabel: report.submitted_at
@@ -123,7 +141,7 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
       ? reports
       : reports.filter((r) => (r.report_month ?? monthOfDateStr(r.submitted_at)) === monthFilter)
 
-  const deletableReports = filteredReports.filter((r) => r.status === 'rejected')
+  const deletableReports = isAdmin ? filteredReports : filteredReports.filter((r) => r.status === 'rejected')
 
   async function removeSelected(): Promise<void> {
     if (selectedIds.size === 0) return
@@ -161,6 +179,22 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold text-gray-900">申請状況</h1>
+          {isAdmin && (
+            <select
+              value={viewingUserId}
+              onChange={(e) => setViewingUserId(e.target.value)}
+              className="rounded-md border-2 border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-bold text-blue-800"
+            >
+              <option value={userId}>自分({userName})</option>
+              {employees
+                .filter((e) => e.id !== userId)
+                .map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
+            </select>
+          )}
           <select
             value={monthFilter}
             onChange={(e) => setMonthFilter(e.target.value)}
@@ -229,7 +263,7 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
                 {filteredReports.map((r) => (
                   <tr key={r.id} className="border-b border-gray-200 last:border-0 hover:bg-gray-50">
                     <td className="p-4">
-                      {r.status === 'rejected' && (
+                      {(r.status === 'rejected' || isAdmin) && (
                         <input
                           type="checkbox"
                           checked={selectedIds.has(r.id)}
@@ -238,7 +272,7 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
                         />
                       )}
                     </td>
-                    <td className="whitespace-nowrap p-4 font-bold text-gray-900">{userName}</td>
+                    <td className="whitespace-nowrap p-4 font-bold text-gray-900">{viewingUserName}</td>
                     <td
                       className="cursor-pointer whitespace-nowrap p-4 font-bold text-blue-600 hover:underline"
                       onClick={() => onOpenReport(r.id)}
@@ -264,7 +298,7 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
                       </button>
                     </td>
                     <td className="p-4 text-right">
-                      {r.status === 'rejected' && (
+                      {(r.status === 'rejected' || isAdmin) && (
                         <button
                           onClick={() => deleteReport(r.id)}
                           className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
