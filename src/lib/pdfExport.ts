@@ -38,9 +38,10 @@ const PDF_STYLE = `
   h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
   p.meta { font-size: 14px; margin: 0 0 10px; color: #000; font-weight: 700; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-  th, td { border: 1.5px solid #333; padding: 8px 10px; text-align: left; }
+  th, td { border: 1.5px solid #333; padding: 8px 10px; text-align: left; overflow-wrap: break-word; }
   th { background: #cbd2db; font-weight: 700; }
   td.amount, th.amount { text-align: right; }
+  td.nowrap, th.nowrap { white-space: nowrap; }
   tfoot td { font-weight: 700; background: #eef0f3; }
   .grand-total { margin-top: 16px; text-align: right; font-size: 19px; font-weight: 700; }
 `
@@ -51,14 +52,14 @@ export function buildExpenseListHtml(rows: PdfListRow[], title: string): string 
     .map(
       (r) => `
     <tr>
-      <td>${escapeHtml(r.employeeName)}</td>
+      <td class="nowrap">${escapeHtml(r.employeeName)}</td>
       <td>${escapeHtml(r.reportTitle)}</td>
-      <td>${escapeHtml(r.date)}</td>
-      <td>${escapeHtml(r.categoryName)}</td>
-      <td>${escapeHtml(r.taxCategoryName)}</td>
-      <td class="amount">${r.amount.toLocaleString()}</td>
+      <td class="nowrap">${escapeHtml(r.date)}</td>
+      <td class="nowrap">${escapeHtml(r.categoryName)}</td>
+      <td class="nowrap">${escapeHtml(r.taxCategoryName)}</td>
+      <td class="amount nowrap">${r.amount.toLocaleString()}</td>
       <td>${escapeHtml(r.payee)}</td>
-      <td>${escapeHtml(r.invoiceNumber)}</td>
+      <td class="nowrap">${escapeHtml(r.invoiceNumber)}</td>
       <td>${escapeHtml(r.description)}</td>
     </tr>`
     )
@@ -71,7 +72,7 @@ export function buildExpenseListHtml(rows: PdfListRow[], title: string): string 
 <style>
   @page { size: A4 portrait; margin: 10mm; }
   ${PDF_STYLE}
-  th, td { padding: 6px 6px; font-size: 13px; word-break: break-all; }
+  th, td { padding: 6px 6px; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -80,14 +81,14 @@ export function buildExpenseListHtml(rows: PdfListRow[], title: string): string 
   <table>
     <thead>
       <tr>
-        <th>申請者</th>
+        <th class="nowrap">申請者</th>
         <th>申請タイトル</th>
-        <th>日付</th>
-        <th>経費科目</th>
-        <th>税区分</th>
-        <th class="amount">金額</th>
+        <th class="nowrap">日付</th>
+        <th class="nowrap">経費科目</th>
+        <th class="nowrap">税区分</th>
+        <th class="amount nowrap">金額</th>
         <th>支払先</th>
-        <th>インボイス登録番号</th>
+        <th class="nowrap">インボイス登録番号</th>
         <th>摘要</th>
       </tr>
     </thead>
@@ -134,13 +135,13 @@ export function buildSingleReportSlipHtml(slip: SingleReportSlip): string {
     .map(
       (i) => `
     <tr>
-      <td class="center">${escapeHtml(slip.statusLabel)}</td>
-      <td class="center">${escapeHtml(i.date)}</td>
-      <td>${escapeHtml(i.categoryName)}</td>
+      <td class="center nowrap">${escapeHtml(slip.statusLabel)}</td>
+      <td class="center nowrap">${escapeHtml(i.date)}</td>
+      <td class="nowrap">${escapeHtml(i.categoryName)}</td>
       <td>${escapeHtml(i.payee || '-')}</td>
       <td>${escapeHtml(i.description || '-')}</td>
       <td>${escapeHtml(i.memo || '-')}</td>
-      <td class="amount">¥ ${i.amount.toLocaleString()}</td>
+      <td class="amount nowrap">¥ ${i.amount.toLocaleString()}</td>
     </tr>`
     )
     .join('')
@@ -170,10 +171,11 @@ export function buildSingleReportSlipHtml(slip: SingleReportSlip): string {
   .meta div { font-size: 17px; font-weight: 700; }
   .meta .name { font-size: 26px; font-weight: 800; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-  th, td { border: 1.5px solid #000; padding: 7px 9px; font-size: 15px; font-weight: 600; text-align: left; }
+  th, td { border: 1.5px solid #000; padding: 7px 9px; font-size: 15px; font-weight: 600; text-align: left; overflow-wrap: break-word; }
   td.center, th.center { text-align: center; }
   th { background: #2b2b2b; color: #fff; font-weight: 800; font-size: 14px; }
   td.amount, th.amount { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+  td.nowrap, th.nowrap { white-space: nowrap; }
   tfoot td { font-weight: 800; background: #e2e2e2; font-size: 17px; }
   .category-table { width: 60%; }
   .category-table th { background: #555; }
@@ -199,13 +201,13 @@ export function buildSingleReportSlipHtml(slip: SingleReportSlip): string {
   <table>
     <thead>
       <tr>
-        <th class="center">状態</th>
-        <th class="center">日付</th>
-        <th>科目名</th>
+        <th class="center nowrap">状態</th>
+        <th class="center nowrap">日付</th>
+        <th class="nowrap">科目名</th>
         <th>支払先</th>
         <th>摘要</th>
         <th>備考</th>
-        <th class="amount">計</th>
+        <th class="amount nowrap">計</th>
       </tr>
     </thead>
     <tbody>${itemRows}</tbody>
@@ -267,11 +269,11 @@ export function buildTransportationListHtml(
     .map(
       (r) => `
     <tr>
-      <td>${escapeHtml(r.date)}</td>
+      <td class="nowrap">${escapeHtml(r.date)}</td>
       <td>${escapeHtml(r.departure)}</td>
       <td>${escapeHtml(r.arrival)}</td>
-      <td class="amount">${r.distanceKm}</td>
-      <td class="amount">${r.amount.toLocaleString()}</td>
+      <td class="amount nowrap">${r.distanceKm}</td>
+      <td class="amount nowrap">${r.amount.toLocaleString()}</td>
       <td>${escapeHtml(r.projectName)}</td>
       <td>${escapeHtml(r.memo)}</td>
     </tr>`
@@ -293,11 +295,11 @@ export function buildTransportationListHtml(
   <table>
     <thead>
       <tr>
-        <th>日付</th>
+        <th class="nowrap">日付</th>
         <th>出発地</th>
         <th>到着地</th>
-        <th class="amount">距離(km)</th>
-        <th class="amount">金額</th>
+        <th class="amount nowrap">距離(km)</th>
+        <th class="amount nowrap">金額</th>
         <th>案件名</th>
         <th>備考</th>
       </tr>

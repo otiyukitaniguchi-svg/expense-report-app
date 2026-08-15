@@ -18,7 +18,7 @@ type View =
   | { name: 'reportStatus' }
   | { name: 'transportation' }
   | { name: 'rules' }
-  | { name: 'report'; id: string | null; month?: string }
+  | { name: 'report'; id: string | null; month?: string; returnTo?: 'reportStatus' | 'approvals' }
   | { name: 'approvals' }
   | { name: 'admin' }
   | { name: 'employees' }
@@ -187,7 +187,7 @@ function Shell(): JSX.Element {
           <ReportStatus
             userId={profile.id}
             userName={profile.name}
-            onOpenReport={(id) => setView({ name: 'report', id })}
+            onOpenReport={(id) => setView({ name: 'report', id, returnTo: 'reportStatus' })}
           />
         )}
         {view.name === 'report' && (
@@ -195,7 +195,9 @@ function Shell(): JSX.Element {
             userId={profile.id}
             reportId={view.id}
             month={view.month}
-            onDone={() => setView({ name: 'reportStatus' })}
+            onDone={() =>
+              setView(view.returnTo === 'approvals' ? { name: 'approvals' } : { name: 'reportStatus' })
+            }
           />
         )}
         {view.name === 'transportation' && (
@@ -208,7 +210,10 @@ function Shell(): JSX.Element {
         )}
         {view.name === 'rules' && <ExpenseRules isAdmin={isAdmin} />}
         {view.name === 'approvals' && (
-          <Approvals managerId={profile.id} onOpenReport={(id) => setView({ name: 'report', id })} />
+          <Approvals
+            managerId={profile.id}
+            onOpenReport={(id) => setView({ name: 'report', id, returnTo: 'approvals' })}
+          />
         )}
         {view.name === 'employees' && <EmployeeMaster />}
         {view.name === 'departments' && <DepartmentMaster />}

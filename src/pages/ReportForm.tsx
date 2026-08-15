@@ -5,7 +5,15 @@ import { useAppSettings } from '../lib/useAppSettings'
 import { StatusBadge } from '../components/StatusBadge'
 import { ExpenseItemModal } from '../components/ExpenseItemModal'
 import { currentMonthStr, formatMonthLabel, recentMonths } from '../lib/month'
+import { buildSingleReportSlipHtml } from '../lib/pdfExport'
 import type { ExpenseItem, ExpenseReport } from '../lib/types'
+
+const statusLabels: Record<ExpenseReport['status'], string> = {
+  draft: '下書き',
+  submitted: '提出済み',
+  approved: '承認済み',
+  rejected: '差し戻し'
+}
 
 interface Props {
   userId: string
@@ -30,6 +38,9 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
   const [submitting, setSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [ownerName, setOwnerName] = useState('')
+  const [ownerDepartment, setOwnerDepartment] = useState('-')
+  const [exporting, setExporting] = useState(false)
 
   const isMonthMode = !fixedReportId
 
@@ -117,6 +128,19 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
       setTitle((reportData as ExpenseReport)?.title ?? '')
       setItems((itemsData as ExpenseItem[]) ?? [])
       setLoading(false)
+
+      const ownerId = (reportData as ExpenseReport)?.user_id
+      if (ownerId) {
+        const { data: ownerData } = await supabase
+          .from('profiles')
+          .select('name, departments(name)')
+          .eq('id', ownerId)
+          .single()
+        if (!active) return
+        const owner = ownerData as { name: string; departments: { name: string } | null } | null
+        setOwnerName(owner?.name ?? '')
+        setOwnerDepartment(owner?.departments?.name ?? '-')
+      }
     }
     load()
     return () => {
@@ -136,6 +160,43 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
   async function saveTitle(): Promise<void> {
     if (!report) return
     await supabase.from('expense_reports').update({ title }).eq('id', report.id)
+  }
+
+  function exportPdf(): void {
+    if (!report) return
+    // ポップアップブロックを避けるため、非同期処理の前にユーザー操作と同期して開く
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      setError('ポップアップがブロックされました。ブラウザの設定でこのサイトのポップアップを許可してください。')
+      return
+    }
+    setExporting(true)
+    try {
+      const html = buildSingleReportSlipHtml({
+        employeeName: ownerName,
+        departmentName: ownerDepartment,
+        statusLabel: statusLabels[report.status],
+        submittedAtLabel: report.submitted_at
+          ? new Date(report.submitted_at).toLocaleDateString('ja-JP')
+          : '-',
+        periodLabel: report.report_month ? formatMonthLabel(report.report_month) : report.title,
+        items: items.map((i) => ({
+          date: i.date,
+          categoryName: (i.category_id && categoryNameById.get(i.category_id)) ?? '-',
+          payee: i.payee ?? '',
+          description: i.description,
+          memo: i.memo ?? '',
+          amount: Number(i.amount)
+        }))
+      })
+      printWindow.document.open()
+      printWindow.document.write(html)
+      printWindow.document.close()
+      printWindow.focus()
+      printWindow.print()
+    } finally {
+      setExporting(false)
+    }
   }
 
   async function saveItem(fields: Omit<ExpenseItem, 'id' | 'report_id'>): Promise<void> {
@@ -282,6 +343,15 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
             ))}
           </select>
         )}
+        {!isMonthMode && (
+          <button
+            onClick={exportPdf}
+            disabled={exporting}
+            className="rounded-md border-2 border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+          >
+            {exporting ? '出力中…' : 'PDF出力・印刷'}
+          </button>
+        )}
       </div>
 
       {error && (
@@ -328,12 +398,12 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
                     />
                   </th>
                 )}
-                <th className="p-2">日付</th>
-                <th className="p-2">経費科目</th>
+                <th className="whitespace-nowrap p-2">日付</th>
+                <th className="whitespace-nowrap p-2">経費科目</th>
                 <th className="p-2">摘要</th>
-                <th className="p-2">金額</th>
+                <th className="whitespace-nowrap p-2 text-right">金額</th>
                 <th className="p-2">支払先</th>
-                <th className="p-2">税区分</th>
+                <th className="whitespace-nowrap p-2">税区分</th>
                 <th className="p-2">備考</th>
                 <th className="p-2 text-right">操作</th>
               </tr>
@@ -351,14 +421,16 @@ export function ReportForm({ userId, reportId: fixedReportId, month, onDone }: P
                       />
                     </td>
                   )}
-                  <td className="p-3 font-medium text-gray-900">{item.date}</td>
-                  <td className="p-3 text-gray-900">
+                  <td className="whitespace-nowrap p-3 font-medium text-gray-900">{item.date}</td>
+                  <td className="whitespace-nowrap p-3 text-gray-900">
                     {(item.category_id && categoryNameById.get(item.category_id)) ?? '-'}
                   </td>
                   <td className="p-3 text-gray-900">{item.description || '-'}</td>
-                  <td className="p-3 font-bold text-gray-900">{Number(item.amount).toLocaleString()} 円</td>
+                  <td className="whitespace-nowrap p-3 text-right font-bold text-gray-900">
+                    {Number(item.amount).toLocaleString()} 円
+                  </td>
                   <td className="p-3 text-gray-900">{item.payee ?? '-'}</td>
-                  <td className="p-3 text-gray-900">
+                  <td className="whitespace-nowrap p-3 text-gray-900">
                     {(item.tax_category_id && taxNameById.get(item.tax_category_id)) ?? '-'}
                   </td>
                   <td className="p-3 text-gray-900">{item.memo ?? '-'}</td>
