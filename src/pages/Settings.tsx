@@ -56,7 +56,7 @@ export function Settings(): JSX.Element {
   if (loading) return <p className="p-8 text-sm text-gray-500">読み込み中…</p>
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-8">
+    <div className="w-full space-y-8 p-4 md:p-8">
       <h1 className="text-3xl font-bold text-gray-900">設定</h1>
 
       <section className="rounded-xl border-2 border-gray-300 bg-white p-5 shadow-sm">

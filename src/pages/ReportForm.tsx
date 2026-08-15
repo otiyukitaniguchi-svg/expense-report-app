@@ -361,7 +361,7 @@ export function ReportForm({ userId, reportId: fixedReportId, month, isAdmin, on
   if (loading || !report) return <p className="p-8 text-sm text-gray-400">読み込み中…</p>
 
   return (
-    <div className="mx-auto max-w-6xl p-4 md:p-8">
+    <div className="w-full p-4 md:p-8">
       <button
         onClick={onDone}
         className="mb-4 text-sm text-blue-600 hover:text-blue-700 hover:underline"

@@ -170,7 +170,7 @@ export function Approvals({ managerId, onOpenReport }: Props): JSX.Element {
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-4 md:p-8">
+    <div className="w-full p-4 md:p-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold text-gray-900">承認</h1>
@@ -243,11 +243,11 @@ export function Approvals({ managerId, onOpenReport }: Props): JSX.Element {
                       className="h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-200"
                     />
                   </th>
-                  <th className="p-4">申請者</th>
+                  <th className="whitespace-nowrap p-4">申請者</th>
                   <th className="p-4">タイトル</th>
-                  <th className="p-4">状態</th>
-                  <th className="p-4">合計金額</th>
-                  <th className="p-4">操作</th>
+                  <th className="whitespace-nowrap p-4">状態</th>
+                  <th className="whitespace-nowrap p-4">合計金額</th>
+                  <th className="whitespace-nowrap p-4">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -261,18 +261,22 @@ export function Approvals({ managerId, onOpenReport }: Props): JSX.Element {
                         className="h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-200"
                       />
                     </td>
-                    <td className="p-4 font-bold text-gray-900">{r.profiles?.name ?? '-'}</td>
+                    <td className="whitespace-nowrap p-4 font-bold text-gray-900">
+                      {r.profiles?.name ?? '-'}
+                    </td>
                     <td
                       className="cursor-pointer p-4 font-bold text-blue-600 hover:underline"
                       onClick={() => onOpenReport(r.id)}
                     >
                       {r.title}
                     </td>
-                    <td className="p-4">
+                    <td className="whitespace-nowrap p-4">
                       <StatusBadge status={r.status} />
                     </td>
-                    <td className="p-4 font-bold text-gray-900">{r.total_amount.toLocaleString()} 円</td>
-                    <td className="p-4">
+                    <td className="whitespace-nowrap p-4 font-bold text-gray-900">
+                      {r.total_amount.toLocaleString()} 円
+                    </td>
+                    <td className="whitespace-nowrap p-4">
                       {(r.status === 'submitted' || r.status === 'approved') && (
                         <div className="flex gap-2">
                           {r.status === 'submitted' && (

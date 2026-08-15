@@ -157,7 +157,7 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-4 md:p-8">
+    <div className="w-full p-4 md:p-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold text-gray-900">申請状況</h1>
@@ -216,13 +216,13 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
                       className="h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-200"
                     />
                   </th>
-                  <th className="p-4">申請者</th>
-                  <th className="p-4">日付</th>
-                  <th className="p-4">状態</th>
-                  <th className="p-4">合計金額</th>
-                  <th className="p-4">提出日</th>
-                  <th className="p-4">PDF化</th>
-                  <th className="p-4 text-right">操作</th>
+                  <th className="whitespace-nowrap p-4">申請者</th>
+                  <th className="whitespace-nowrap p-4">日付</th>
+                  <th className="whitespace-nowrap p-4">状態</th>
+                  <th className="whitespace-nowrap p-4">合計金額</th>
+                  <th className="whitespace-nowrap p-4">提出日</th>
+                  <th className="whitespace-nowrap p-4">PDF化</th>
+                  <th className="whitespace-nowrap p-4 text-right">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -238,21 +238,23 @@ export function ReportStatus({ userId, userName, onOpenReport }: Props): JSX.Ele
                         />
                       )}
                     </td>
-                    <td className="p-4 font-bold text-gray-900">{userName}</td>
+                    <td className="whitespace-nowrap p-4 font-bold text-gray-900">{userName}</td>
                     <td
-                      className="cursor-pointer p-4 font-bold text-blue-600 hover:underline"
+                      className="cursor-pointer whitespace-nowrap p-4 font-bold text-blue-600 hover:underline"
                       onClick={() => onOpenReport(r.id)}
                     >
                       {r.report_month ? formatMonthLabel(r.report_month) : r.title}
                     </td>
-                    <td className="p-4">
+                    <td className="whitespace-nowrap p-4">
                       <StatusBadge status={r.status} />
                     </td>
-                    <td className="p-4 font-bold text-gray-900">{r.total_amount.toLocaleString()} 円</td>
-                    <td className="p-4 text-gray-700">
+                    <td className="whitespace-nowrap p-4 font-bold text-gray-900">
+                      {r.total_amount.toLocaleString()} 円
+                    </td>
+                    <td className="whitespace-nowrap p-4 text-gray-700">
                       {r.submitted_at ? new Date(r.submitted_at).toLocaleDateString('ja-JP') : '-'}
                     </td>
-                    <td className="p-4">
+                    <td className="whitespace-nowrap p-4">
                       <button
                         onClick={() => generatePdf(r)}
                         disabled={generatingId === r.id}

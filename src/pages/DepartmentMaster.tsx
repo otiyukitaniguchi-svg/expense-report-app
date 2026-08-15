@@ -69,7 +69,7 @@ export function DepartmentMaster(): JSX.Element {
   if (loading) return <p className="p-8 text-sm text-gray-500">読み込み中…</p>
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-8">
+    <div className="w-full space-y-8 p-4 md:p-8">
       <h1 className="text-3xl font-bold text-gray-900">部署一覧</h1>
       {error && (
         <p className="rounded-md border-2 border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">

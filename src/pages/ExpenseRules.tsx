@@ -41,7 +41,7 @@ export function ExpenseRules({ isAdmin }: Props): JSX.Element {
   if (loading) return <p className="p-8 text-sm text-gray-500">読み込み中…</p>
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-8">
+    <div className="w-full space-y-6 p-4 md:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold text-gray-900">経費精算ルール</h1>
         {isAdmin && !editing && (
