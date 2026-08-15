@@ -161,7 +161,7 @@ export function buildSingleReportSlipHtml(slip: SingleReportSlip): string {
 <head>
 <meta charset="UTF-8" />
 <style>
-  @page { size: A4 portrait; margin: 9mm; }
+  @page { size: A4 landscape; margin: 9mm; }
   * { box-sizing: border-box; }
   body { font-family: "Yu Gothic", "Meiryo", sans-serif; font-size: 16px; color: #000; padding: 6px; }
   .header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
