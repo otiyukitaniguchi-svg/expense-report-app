@@ -1,21 +1,23 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { useAppSettings } from '../lib/useAppSettings'
+import { useAppSettings, resolveEffectiveFuelSettings } from '../lib/useAppSettings'
 import { TransportationRouteModal } from '../components/TransportationRouteModal'
 import { buildTransportationListHtml } from '../lib/pdfExport'
 import { formatMonthLabel, recentMonths } from '../lib/month'
-import type { TransportationRoute } from '../lib/types'
+import type { Profile, TransportationRoute } from '../lib/types'
 
 interface Props {
   userId: string
   userName: string
+  profile: Profile
   onBack: () => void
 }
 
 type ModalState = { mode: 'closed' } | { mode: 'create' } | { mode: 'edit'; item: TransportationRoute }
 
-export function TransportationDetails({ userId, userName, onBack }: Props): JSX.Element {
-  const { settings } = useAppSettings()
+export function TransportationDetails({ userId, userName, profile, onBack }: Props): JSX.Element {
+  const { settings: globalSettings } = useAppSettings()
+  const settings = globalSettings ? resolveEffectiveFuelSettings(globalSettings, profile) : null
   const [routes, setRoutes] = useState<TransportationRoute[]>([])
   const [loading, setLoading] = useState(true)
   const [modalState, setModalState] = useState<ModalState>({ mode: 'closed' })

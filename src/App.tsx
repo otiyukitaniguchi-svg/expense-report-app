@@ -202,6 +202,7 @@ function Shell(): JSX.Element {
           <TransportationDetails
             userId={profile.id}
             userName={profile.name}
+            profile={profile}
             onBack={() => go({ name: 'report', id: null, month: currentMonthStr() })}
           />
         )}

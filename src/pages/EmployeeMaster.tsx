@@ -4,6 +4,7 @@ import { useDepartments } from '../lib/useDepartments'
 import { useDepartmentApprovers } from '../lib/useDepartmentApprovers'
 import { PasswordInput } from '../components/PasswordInput'
 import { EmployeeFormModal } from '../components/EmployeeFormModal'
+import { EmployeeFuelModal } from '../components/EmployeeFuelModal'
 import type { Profile, Role } from '../lib/types'
 
 const inputClass =
@@ -51,6 +52,7 @@ export function EmployeeMaster(): JSX.Element {
   const [passwordMessage, setPasswordMessage] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [fuelModalFor, setFuelModalFor] = useState<Profile | null>(null)
 
   async function load(): Promise<void> {
     setLoading(true)
@@ -126,6 +128,18 @@ export function EmployeeMaster(): JSX.Element {
     return null
   }
 
+  async function saveFuelSettings(fields: {
+    fuel_price_per_liter: number | null
+    fuel_efficiency_km_per_liter: number | null
+    seasonal_index_summer: number | null
+    seasonal_index_winter: number | null
+  }): Promise<void> {
+    if (!fuelModalFor) return
+    await supabase.from('profiles').update(fields).eq('id', fuelModalFor.id)
+    setFuelModalFor(null)
+    load()
+  }
+
   async function changePassword(id: string): Promise<void> {
     const password = newPasswords[id]
     if (!password) return
@@ -158,7 +172,7 @@ export function EmployeeMaster(): JSX.Element {
 
       <section className="rounded-xl border-2 border-gray-300 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px] text-left text-base">
+          <table className="w-full min-w-[1120px] text-left text-base">
             <thead>
               <tr className="border-b-2 border-gray-300 bg-blue-50 text-sm font-bold text-blue-800">
                 <th className="p-4 text-center">氏名</th>
@@ -166,6 +180,7 @@ export function EmployeeMaster(): JSX.Element {
                 <th className="p-4 text-center">役割</th>
                 <th className="p-4 text-center">部署</th>
                 <th className="p-4 text-center">承認者</th>
+                <th className="p-4 text-center">燃費設定</th>
                 <th className="p-4 text-center">パスワード変更</th>
               </tr>
             </thead>
@@ -232,6 +247,20 @@ export function EmployeeMaster(): JSX.Element {
                   <td className="p-4 font-semibold text-gray-700">
                     {approverNames.length > 0 ? approverNames.join('、') : '-'}
                   </td>
+                  <td className="p-4 text-center">
+                    <button
+                      onClick={() => setFuelModalFor(p)}
+                      className="rounded-md border-2 border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                    >
+                      設定
+                      {(p.fuel_price_per_liter !== null ||
+                        p.fuel_efficiency_km_per_liter !== null ||
+                        p.seasonal_index_summer !== null ||
+                        p.seasonal_index_winter !== null) && (
+                        <span className="ml-1 text-emerald-600">●</span>
+                      )}
+                    </button>
+                  </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
                       <PasswordInput
@@ -275,6 +304,14 @@ export function EmployeeMaster(): JSX.Element {
           roleLabels={roleLabels}
           onSave={createEmployee}
           onClose={() => setShowAddModal(false)}
+        />
+      )}
+
+      {fuelModalFor && (
+        <EmployeeFuelModal
+          profile={fuelModalFor}
+          onSave={saveFuelSettings}
+          onClose={() => setFuelModalFor(null)}
         />
       )}
     </div>

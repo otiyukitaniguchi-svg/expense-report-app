@@ -5,6 +5,10 @@ export interface Profile {
   name: string
   role: Role
   department_id: string | null
+  fuel_price_per_liter: number | null
+  fuel_efficiency_km_per_liter: number | null
+  seasonal_index_summer: number | null
+  seasonal_index_winter: number | null
 }
 
 export interface Department {

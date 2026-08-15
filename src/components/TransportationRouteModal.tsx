@@ -17,6 +17,13 @@ interface GeoCandidate {
   lon: number
 }
 
+const travelModeLabels: Record<string, string> = {
+  driving: '車',
+  walking: '徒歩',
+  bicycling: '自転車',
+  transit: '公共交通機関'
+}
+
 const fieldClass =
   'w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 transition focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100'
 const labelClass = 'mb-1.5 block text-sm font-medium text-gray-700'
@@ -42,6 +49,8 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
   const [arrivalCandidates, setArrivalCandidates] = useState<GeoCandidate[]>([])
   const [selectedDepartureIdx, setSelectedDepartureIdx] = useState(0)
   const [selectedArrivalIdx, setSelectedArrivalIdx] = useState(0)
+  const [travelMode, setTravelMode] = useState('driving')
+  const [avoidTolls, setAvoidTolls] = useState(false)
 
   const activeSeasonalIndex = seasonalIndexForDate(date, settings)
   const denominator = settings.fuel_efficiency_km_per_liter * activeSeasonalIndex
@@ -114,7 +123,12 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
       const res = await fetch('/api/calculate-distance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ fromPlaceId: from.placeId, toPlaceId: to.placeId })
+        body: JSON.stringify({
+          fromPlaceId: from.placeId,
+          toPlaceId: to.placeId,
+          mode: travelMode,
+          avoidTolls
+        })
       })
       const body = await res.json()
       if (!res.ok) {
@@ -199,6 +213,32 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
               className={fieldClass}
             />
           </div>
+
+          <div>
+            <label className={labelClass}>交通手段</label>
+            <select
+              value={travelMode}
+              onChange={(e) => setTravelMode(e.target.value)}
+              className={fieldClass}
+            >
+              {Object.entries(travelModeLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {travelMode === 'driving' && (
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={avoidTolls}
+                onChange={(e) => setAvoidTolls(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-200"
+              />
+              有料道路を利用しない
+            </label>
+          )}
 
           <button
             type="button"

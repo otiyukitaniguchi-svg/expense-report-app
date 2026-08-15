@@ -19,17 +19,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
 
-  const { fromPlaceId, toPlaceId } = (req.body ?? {}) as {
+  const { fromPlaceId, toPlaceId, mode, avoidTolls } = (req.body ?? {}) as {
     fromPlaceId?: string
     toPlaceId?: string
+    mode?: string
+    avoidTolls?: boolean
   }
   if (!fromPlaceId || !toPlaceId) {
     res.status(400).json({ error: '出発地・到着地を指定してください' })
     return
   }
+  const allowedModes = ['driving', 'walking', 'bicycling', 'transit']
+  const travelMode = allowedModes.includes(mode ?? '') ? mode : 'driving'
 
   try {
-    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=place_id:${encodeURIComponent(fromPlaceId)}&destinations=place_id:${encodeURIComponent(toPlaceId)}&mode=driving&language=ja&key=${apiKey}`
+    let url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=place_id:${encodeURIComponent(fromPlaceId)}&destinations=place_id:${encodeURIComponent(toPlaceId)}&mode=${travelMode}&language=ja&key=${apiKey}`
+    if (travelMode === 'driving' && avoidTolls) {
+      url += '&avoid=tolls'
+    }
     const routeRes = await fetch(url)
     if (!routeRes.ok) {
       res.status(502).json({ error: '経路計算サービスへの接続に失敗しました' })
