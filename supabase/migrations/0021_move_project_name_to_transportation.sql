@@ -4,4 +4,4 @@ alter table public.expense_items
   drop column if exists project_name;
 
 alter table public.transportation_routes
-  add column project_name text;
+  add column if not exists project_name text;

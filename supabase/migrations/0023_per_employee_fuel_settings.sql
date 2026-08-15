@@ -2,10 +2,10 @@
 -- null の場合は「設定」ページの全社共通デフォルト値が使われる。
 
 alter table public.profiles
-  add column fuel_price_per_liter numeric,
-  add column fuel_efficiency_km_per_liter numeric,
-  add column seasonal_index_summer numeric,
-  add column seasonal_index_winter numeric;
+  add column if not exists fuel_price_per_liter numeric,
+  add column if not exists fuel_efficiency_km_per_liter numeric,
+  add column if not exists seasonal_index_summer numeric,
+  add column if not exists seasonal_index_winter numeric;
 
 -- 本人による自己更新でこれらの値を書き換えられないようにする(admin専用の設定項目)
 create or replace function public.prevent_profile_privilege_escalation()

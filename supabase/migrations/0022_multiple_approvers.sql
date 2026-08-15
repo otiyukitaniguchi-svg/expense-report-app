@@ -1,8 +1,9 @@
 -- 部署の承認者を複数人選択できるようにする。
 -- 従来の departments.approver_id (1人だけ) / profiles.manager_id (1人だけ) を廃止し、
 -- 多対多の department_approvers テーブルに置き換える。
+-- (このファイルは再実行しても安全なように書かれています)
 
-create table public.department_approvers (
+create table if not exists public.department_approvers (
   department_id uuid not null references public.departments (id) on delete cascade,
   approver_id uuid not null references public.profiles (id) on delete cascade,
   primary key (department_id, approver_id)
@@ -10,18 +11,29 @@ create table public.department_approvers (
 
 alter table public.department_approvers enable row level security;
 
+drop policy if exists "department_approvers_select_all" on public.department_approvers;
 create policy "department_approvers_select_all" on public.department_approvers for select using (true);
+drop policy if exists "department_approvers_admin_insert" on public.department_approvers;
 create policy "department_approvers_admin_insert" on public.department_approvers for insert with check (public.is_admin());
+drop policy if exists "department_approvers_admin_delete" on public.department_approvers;
 create policy "department_approvers_admin_delete" on public.department_approvers for delete using (public.is_admin());
 
--- 既存の単一承認者データを新テーブルへ移行
-insert into public.department_approvers (department_id, approver_id)
-select id, approver_id from public.departments where approver_id is not null
-on conflict do nothing;
+-- 既存の単一承認者データを新テーブルへ移行(departments.approver_id が既に削除済みの場合はスキップ)
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'departments' and column_name = 'approver_id'
+  ) then
+    insert into public.department_approvers (department_id, approver_id)
+    select id, approver_id from public.departments where approver_id is not null
+    on conflict do nothing;
+  end if;
+end $$;
 
 -- ---- RLSポリシーを department_approvers ベースに書き換え ----
 
-drop policy "profiles_select_self_or_subordinate_or_admin" on public.profiles;
+drop policy if exists "profiles_select_self_or_subordinate_or_admin" on public.profiles;
 create policy "profiles_select_self_or_subordinate_or_admin"
   on public.profiles for select
   using (
@@ -33,7 +45,7 @@ create policy "profiles_select_self_or_subordinate_or_admin"
     )
   );
 
-drop policy "reports_select_own_or_manager_or_admin" on public.expense_reports;
+drop policy if exists "reports_select_own_or_manager_or_admin" on public.expense_reports;
 create policy "reports_select_own_or_manager_or_admin"
   on public.expense_reports for select
   using (
@@ -46,7 +58,7 @@ create policy "reports_select_own_or_manager_or_admin"
     )
   );
 
-drop policy "reports_update_by_manager_or_admin" on public.expense_reports;
+drop policy if exists "reports_update_by_manager_or_admin" on public.expense_reports;
 create policy "reports_update_by_manager_or_admin"
   on public.expense_reports for update
   using (
@@ -58,7 +70,7 @@ create policy "reports_update_by_manager_or_admin"
     )
   );
 
-drop policy "items_select_via_report" on public.expense_items;
+drop policy if exists "items_select_via_report" on public.expense_items;
 create policy "items_select_via_report"
   on public.expense_items for select
   using (

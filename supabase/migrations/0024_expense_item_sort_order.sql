@@ -1,6 +1,6 @@
 -- 経費明細を自由に並び替えできるように、表示順を保持する列を追加する。
 
-alter table public.expense_items add column sort_order integer;
+alter table public.expense_items add column if not exists sort_order integer;
 
 -- 既存データには、これまでの並び順(日付→作成日時)に基づいて連番を振っておく
 with ranked as (
