@@ -177,10 +177,11 @@ export function buildSingleReportSlipHtml(slip: SingleReportSlip): string {
   td.amount, th.amount { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
   td.nowrap, th.nowrap { white-space: nowrap; }
   tfoot td { font-weight: 800; background: #e2e2e2; font-size: 17px; }
-  .category-table { width: 60%; }
+  .tables-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .category-table { width: 55%; margin-bottom: 0; }
   .category-table th { background: #555; }
-  .approval-table { width: 70mm; margin-left: auto; table-layout: fixed; }
-  .approval-table th { background: #000; color: #fff; text-align: center; font-size: 15px; width: 33.33%; }
+  .approval-table { width: 95mm; table-layout: fixed; margin-bottom: 0; }
+  .approval-table th { background: #000; color: #fff; text-align: center; font-size: 14px; width: 25%; }
   .approval-table td { height: 34mm; vertical-align: top; text-align: center; }
 </style>
 </head>
@@ -219,32 +220,36 @@ export function buildSingleReportSlipHtml(slip: SingleReportSlip): string {
     </tfoot>
   </table>
 
-  <table class="category-table">
-    <thead>
-      <tr>
-        <th>科目別</th>
-        <th class="amount">計</th>
-      </tr>
-    </thead>
-    <tbody>${categoryRows}</tbody>
-  </table>
+  <div class="tables-row">
+    <table class="category-table">
+      <thead>
+        <tr>
+          <th>科目別</th>
+          <th class="amount">計</th>
+        </tr>
+      </thead>
+      <tbody>${categoryRows}</tbody>
+    </table>
 
-  <table class="approval-table">
-    <thead>
-      <tr>
-        <th>承認</th>
-        <th>確認</th>
-        <th>申請</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-      </tr>
-    </tbody>
-  </table>
+    <table class="approval-table">
+      <thead>
+        <tr>
+          <th>承認</th>
+          <th>確認者①</th>
+          <th>確認者②</th>
+          <th>申請</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </body>
 </html>`
 }
