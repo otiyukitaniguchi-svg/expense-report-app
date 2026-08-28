@@ -290,8 +290,9 @@ export function buildTransportationListHtml(
 <head>
 <meta charset="UTF-8" />
 <style>
-  @page { size: A4 portrait; margin: 10mm; }
+  @page { size: A4 landscape; margin: 10mm; }
   ${PDF_STYLE}
+  th, td { white-space: nowrap; }
 </style>
 </head>
 <body>
