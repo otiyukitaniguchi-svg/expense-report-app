@@ -133,7 +133,12 @@ export function TransportationDetails({
     monthFilter === 'all' ? routes : routes.filter((r) => r.date.slice(0, 7) === monthFilter)
 
   function exportPdf(): void {
-    if (filteredRoutes.length === 0) return
+    const selectedRoutes = filteredRoutes.filter((r) => selectedIds.has(r.id))
+    if (selectedRoutes.length === 0) {
+      setError('PDFに出力する交通費詳細をチェックボックスで選択してください。')
+      return
+    }
+    setError(null)
     // ポップアップブロックを避けるため、非同期処理の前にユーザー操作と同期して開く
     const printWindow = window.open('', '_blank')
     if (!printWindow) {
@@ -143,7 +148,7 @@ export function TransportationDetails({
     setExporting(true)
     try {
       const html = buildTransportationListHtml(
-        filteredRoutes.map((r) => ({
+        selectedRoutes.map((r) => ({
           date: r.date,
           departure: r.departure,
           arrival: r.arrival,
@@ -224,10 +229,10 @@ export function TransportationDetails({
           </button>
           <button
             onClick={exportPdf}
-            disabled={exporting || routes.length === 0}
+            disabled={exporting || selectedIds.size === 0}
             className="rounded-md border-2 border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
           >
-            {exporting ? '出力中…' : 'PDF出力'}
+            {exporting ? '出力中…' : `PDF出力${selectedIds.size > 0 ? `(${selectedIds.size})` : ''}`}
           </button>
           <button
             onClick={() => setModalState({ mode: 'create' })}
