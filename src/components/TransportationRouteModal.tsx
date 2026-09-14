@@ -6,7 +6,7 @@ import type { TransportationRoute } from '../lib/types'
 interface Props {
   initialItem: TransportationRoute | null
   settings: AppSettings
-  onSave: (fields: Omit<TransportationRoute, 'id' | 'user_id' | 'created_at'>) => Promise<void>
+  onSave: (fields: Omit<TransportationRoute, 'id' | 'user_id' | 'created_at' | 'report_id'>) => Promise<void>
   onClose: () => void
 }
 

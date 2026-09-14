@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { StatusBadge } from '../components/StatusBadge'
 import { useLookups } from '../lib/useLookups'
-import { buildExpenseListHtml, type PdfListRow } from '../lib/pdfExport'
+import { buildExpenseListHtml, buildTransportationListHtml, type PdfListRow } from '../lib/pdfExport'
 import { formatMonthLabel, monthOfDateStr, recentMonths } from '../lib/month'
-import type { ExpenseItem, ExpenseReport } from '../lib/types'
+import type { ExpenseItem, ExpenseReport, TransportationRoute } from '../lib/types'
 
 interface ReportWithOwner extends ExpenseReport {
   profiles: { name: string } | null
@@ -23,6 +23,7 @@ export function Approvals({ managerId, onOpenReport }: Props): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [monthFilter, setMonthFilter] = useState('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [generatingId, setGeneratingId] = useState<string | null>(null)
 
   async function load(): Promise<void> {
     setLoading(true)
@@ -114,8 +115,52 @@ export function Approvals({ managerId, onOpenReport }: Props): JSX.Element {
     )
   }
 
+  async function generateTransportPdf(report: ReportWithOwner): Promise<void> {
+    // ポップアップブロックを避けるため、非同期処理の前にユーザー操作と同期して開く
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      setError('ポップアップがブロックされました。ブラウザの設定でこのサイトのポップアップを許可してください。')
+      return
+    }
+    setGeneratingId(report.id)
+    setError(null)
+    try {
+      const { data: routesData, error: routesError } = await supabase
+        .from('transportation_routes')
+        .select('*')
+        .eq('report_id', report.id)
+        .order('date')
+      if (routesError) {
+        setError(routesError.message)
+        printWindow.close()
+        return
+      }
+      const html = buildTransportationListHtml(
+        ((routesData as TransportationRoute[]) ?? []).map((r) => ({
+          date: r.date,
+          departure: r.departure,
+          arrival: r.arrival,
+          distanceKm: r.distance_km,
+          amount: Number(r.amount),
+          projectName: r.project_name ?? '',
+          memo: r.memo ?? ''
+        })),
+        report.profiles?.name ?? '-',
+        report.title
+      )
+      printWindow.document.open()
+      printWindow.document.write(html)
+      printWindow.document.close()
+      printWindow.focus()
+      printWindow.print()
+    } finally {
+      setGeneratingId(null)
+    }
+  }
+
   async function exportPdf(): Promise<void> {
-    if (filteredReports.length === 0) return
+    const expenseReports = filteredReports.filter((r) => r.report_type === 'expense')
+    if (expenseReports.length === 0) return
     // ポップアップブロックを避けるため、非同期処理(await)の前にユーザー操作と同期して開く
     const printWindow = window.open('', '_blank')
     if (!printWindow) {
@@ -127,14 +172,14 @@ export function Approvals({ managerId, onOpenReport }: Props): JSX.Element {
     try {
       const categoryNameById = new Map(categories.map((c) => [c.id, c.name]))
       const taxNameById = new Map(taxCategories.map((t) => [t.id, t.name]))
-      const reportById = new Map(filteredReports.map((r) => [r.id, r]))
+      const reportById = new Map(expenseReports.map((r) => [r.id, r]))
 
       const { data: items, error: itemsError } = await supabase
         .from('expense_items')
         .select('*')
         .in(
           'report_id',
-          filteredReports.map((r) => r.id)
+          expenseReports.map((r) => r.id)
         )
         .order('date')
       if (itemsError) {
@@ -211,10 +256,10 @@ export function Approvals({ managerId, onOpenReport }: Props): JSX.Element {
           </button>
           <button
             onClick={exportPdf}
-            disabled={exporting || filteredReports.length === 0}
+            disabled={exporting || filteredReports.every((r) => r.report_type !== 'expense')}
             className="rounded-md border-2 border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
           >
-            {exporting ? '出力中…' : 'PDF出力(明細一覧を印刷)'}
+            {exporting ? '出力中…' : 'PDF出力(経費明細一覧を印刷)'}
           </button>
         </div>
       </div>
@@ -244,6 +289,7 @@ export function Approvals({ managerId, onOpenReport }: Props): JSX.Element {
                     />
                   </th>
                   <th className="whitespace-nowrap p-4">申請者</th>
+                  <th className="whitespace-nowrap p-4">種別</th>
                   <th className="p-4">タイトル</th>
                   <th className="whitespace-nowrap p-4">状態</th>
                   <th className="whitespace-nowrap p-4">合計金額</th>
@@ -264,9 +310,24 @@ export function Approvals({ managerId, onOpenReport }: Props): JSX.Element {
                     <td className="whitespace-nowrap p-4 font-bold text-gray-900">
                       {r.profiles?.name ?? '-'}
                     </td>
+                    <td className="whitespace-nowrap p-4">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                          r.report_type === 'transportation'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}
+                      >
+                        {r.report_type === 'transportation' ? '交通費精算' : '経費精算'}
+                      </span>
+                    </td>
                     <td
-                      className="cursor-pointer p-4 font-bold text-blue-600 hover:underline"
-                      onClick={() => onOpenReport(r.id)}
+                      className={
+                        r.report_type === 'expense'
+                          ? 'cursor-pointer p-4 font-bold text-blue-600 hover:underline'
+                          : 'p-4 font-bold text-gray-900'
+                      }
+                      onClick={r.report_type === 'expense' ? () => onOpenReport(r.id) : undefined}
                     >
                       {r.title}
                     </td>
@@ -277,24 +338,35 @@ export function Approvals({ managerId, onOpenReport }: Props): JSX.Element {
                       {r.total_amount.toLocaleString()} 円
                     </td>
                     <td className="whitespace-nowrap p-4">
-                      {(r.status === 'submitted' || r.status === 'approved') && (
-                        <div className="flex gap-2">
-                          {r.status === 'submitted' && (
-                            <button
-                              onClick={() => decide(r.id, true)}
-                              className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
-                            >
-                              承認
-                            </button>
-                          )}
+                      <div className="flex flex-wrap gap-2">
+                        {r.report_type === 'transportation' && (
                           <button
-                            onClick={() => decide(r.id, false)}
-                            className="rounded-md bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-red-600"
+                            onClick={() => generateTransportPdf(r)}
+                            disabled={generatingId === r.id}
+                            className="rounded-md border-2 border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
                           >
-                            差し戻し
+                            {generatingId === r.id ? '作成中…' : 'PDF化'}
                           </button>
-                        </div>
-                      )}
+                        )}
+                        {(r.status === 'submitted' || r.status === 'approved') && (
+                          <>
+                            {r.status === 'submitted' && (
+                              <button
+                                onClick={() => decide(r.id, true)}
+                                className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
+                              >
+                                承認
+                              </button>
+                            )}
+                            <button
+                              onClick={() => decide(r.id, false)}
+                              className="rounded-md bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-red-600"
+                            >
+                              差し戻し
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

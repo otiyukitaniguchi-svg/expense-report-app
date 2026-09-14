@@ -3,8 +3,8 @@ import { supabase } from '../lib/supabaseClient'
 import { useLookups } from '../lib/useLookups'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatMonthLabel, monthOfDateStr, recentMonths } from '../lib/month'
-import { buildSingleReportSlipHtml } from '../lib/pdfExport'
-import type { ExpenseItem, ExpenseReport, Profile } from '../lib/types'
+import { buildSingleReportSlipHtml, buildTransportationListHtml } from '../lib/pdfExport'
+import type { ExpenseItem, ExpenseReport, Profile, ReportType, TransportationRoute } from '../lib/types'
 
 interface Props {
   userId: string
@@ -27,6 +27,7 @@ export function ReportStatus({ userId, userName, isAdmin, onOpenReport }: Props)
   const [reports, setReports] = useState<ExpenseReport[]>([])
   const [departmentName, setDepartmentName] = useState('-')
   const [loading, setLoading] = useState(true)
+  const [reportTypeFilter, setReportTypeFilter] = useState<ReportType>('expense')
   const [monthFilter, setMonthFilter] = useState('all')
   const [generatingId, setGeneratingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -52,6 +53,7 @@ export function ReportStatus({ userId, userName, isAdmin, onOpenReport }: Props)
       .from('expense_reports')
       .select('*')
       .eq('user_id', viewingUserId)
+      .eq('report_type', reportTypeFilter)
       .in('status', ['submitted', 'approved', 'rejected'])
       .order('submitted_at', { ascending: false })
     setReports((data as ExpenseReport[]) ?? [])
@@ -61,7 +63,7 @@ export function ReportStatus({ userId, userName, isAdmin, onOpenReport }: Props)
   useEffect(() => {
     load()
     setSelectedIds(new Set())
-  }, [viewingUserId])
+  }, [viewingUserId, reportTypeFilter])
 
   useEffect(() => {
     supabase
@@ -96,6 +98,38 @@ export function ReportStatus({ userId, userName, isAdmin, onOpenReport }: Props)
     setGeneratingId(report.id)
     setError(null)
     try {
+      if (report.report_type === 'transportation') {
+        const { data: routesData, error: routesError } = await supabase
+          .from('transportation_routes')
+          .select('*')
+          .eq('report_id', report.id)
+          .order('date')
+        if (routesError) {
+          setError(routesError.message)
+          printWindow.close()
+          return
+        }
+        const html = buildTransportationListHtml(
+          ((routesData as TransportationRoute[]) ?? []).map((r) => ({
+            date: r.date,
+            departure: r.departure,
+            arrival: r.arrival,
+            distanceKm: r.distance_km,
+            amount: Number(r.amount),
+            projectName: r.project_name ?? '',
+            memo: r.memo ?? ''
+          })),
+          viewingUserName,
+          report.title
+        )
+        printWindow.document.open()
+        printWindow.document.write(html)
+        printWindow.document.close()
+        printWindow.focus()
+        printWindow.print()
+        return
+      }
+
       const { data: itemsData, error: itemsError } = await supabase
         .from('expense_items')
         .select('*')
@@ -207,6 +241,28 @@ export function ReportStatus({ userId, userName, isAdmin, onOpenReport }: Props)
               </option>
             ))}
           </select>
+          <div className="flex rounded-md border-2 border-gray-300 bg-white p-0.5">
+            <button
+              onClick={() => setReportTypeFilter('expense')}
+              className={`rounded px-3 py-1 text-sm font-bold transition ${
+                reportTypeFilter === 'expense'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              経費精算
+            </button>
+            <button
+              onClick={() => setReportTypeFilter('transportation')}
+              className={`rounded px-3 py-1 text-sm font-bold transition ${
+                reportTypeFilter === 'transportation'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              交通費詳細
+            </button>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -274,8 +330,12 @@ export function ReportStatus({ userId, userName, isAdmin, onOpenReport }: Props)
                     </td>
                     <td className="whitespace-nowrap p-4 font-bold text-gray-900">{viewingUserName}</td>
                     <td
-                      className="cursor-pointer whitespace-nowrap p-4 font-bold text-blue-600 hover:underline"
-                      onClick={() => onOpenReport(r.id)}
+                      className={
+                        r.report_type === 'expense'
+                          ? 'cursor-pointer whitespace-nowrap p-4 font-bold text-blue-600 hover:underline'
+                          : 'whitespace-nowrap p-4 font-bold text-gray-900'
+                      }
+                      onClick={r.report_type === 'expense' ? () => onOpenReport(r.id) : undefined}
                     >
                       {r.report_month ? formatMonthLabel(r.report_month) : r.title}
                     </td>

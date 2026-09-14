@@ -33,6 +33,7 @@ export function TransportationDetails({
   const [error, setError] = useState<string | null>(null)
   const [monthFilter, setMonthFilter] = useState('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (!isAdmin) return
@@ -56,6 +57,7 @@ export function TransportationDetails({
       .from('transportation_routes')
       .select('*')
       .eq('user_id', viewingUserId)
+      .is('report_id', null)
       .order('date', { ascending: false })
     setRoutes((data as TransportationRoute[]) ?? [])
     setLoading(false)
@@ -67,13 +69,13 @@ export function TransportationDetails({
   }, [viewingUserId])
 
   async function saveRoute(
-    fields: Omit<TransportationRoute, 'id' | 'user_id' | 'created_at'>
+    fields: Omit<TransportationRoute, 'id' | 'user_id' | 'created_at' | 'report_id'>
   ): Promise<void> {
     setError(null)
     if (modalState.mode === 'create') {
       const { error: insertError } = await supabase
         .from('transportation_routes')
-        .insert({ user_id: viewingUserId, ...fields })
+        .insert({ user_id: viewingUserId, report_id: null, ...fields })
       if (insertError) {
         setError(insertError.message)
         return
@@ -95,6 +97,46 @@ export function TransportationDetails({
   async function removeRoute(id: string): Promise<void> {
     if (!window.confirm('この交通費詳細を削除しますか?')) return
     await supabase.from('transportation_routes').delete().eq('id', id)
+    load()
+  }
+
+  async function submitSelected(): Promise<void> {
+    const selectedRoutes = filteredRoutes.filter((r) => selectedIds.has(r.id))
+    if (selectedRoutes.length === 0) {
+      setError('申請する交通費詳細をチェックボックスで選択してください。')
+      return
+    }
+    if (!window.confirm(`選択した${selectedRoutes.length}件を交通費として申請しますか?`)) return
+    setError(null)
+    setSubmitting(true)
+    const total = selectedRoutes.reduce((sum, r) => sum + Number(r.amount), 0)
+    const { data: newReport, error: insertError } = await supabase
+      .from('expense_reports')
+      .insert({
+        user_id: viewingUserId,
+        title: `${new Date().toLocaleDateString('ja-JP')} 交通費申請`,
+        report_type: 'transportation',
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
+        total_amount: total
+      })
+      .select('id')
+      .single()
+    if (insertError || !newReport) {
+      setSubmitting(false)
+      setError(insertError?.message ?? '申請の作成に失敗しました')
+      return
+    }
+    const { error: updateError } = await supabase
+      .from('transportation_routes')
+      .update({ report_id: newReport.id })
+      .in('id', selectedRoutes.map((r) => r.id))
+    setSubmitting(false)
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
+    setSelectedIds(new Set())
     load()
   }
 
@@ -227,6 +269,15 @@ export function TransportationDetails({
           >
             選択削除{selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
           </button>
+          {viewingUserId === userId && (
+            <button
+              onClick={submitSelected}
+              disabled={submitting || selectedIds.size === 0}
+              className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {submitting ? '申請中…' : `申請する${selectedIds.size > 0 ? `(${selectedIds.size})` : ''}`}
+            </button>
+          )}
           <button
             onClick={exportPdf}
             disabled={exporting || selectedIds.size === 0}

@@ -36,6 +36,7 @@ export interface TaxCategory {
 }
 
 export type ReportStatus = 'draft' | 'submitted' | 'approved' | 'rejected'
+export type ReportType = 'expense' | 'transportation'
 
 export interface ExpenseReport {
   id: string
@@ -48,6 +49,7 @@ export interface ExpenseReport {
   total_amount: number
   created_at: string
   report_month: string | null
+  report_type: ReportType
 }
 
 export interface ExpenseItem {
@@ -75,4 +77,5 @@ export interface TransportationRoute {
   project_name: string | null
   memo: string | null
   created_at: string
+  report_id: string | null
 }
