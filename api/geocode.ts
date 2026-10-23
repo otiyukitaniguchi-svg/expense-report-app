@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
 
-  const normalizedQuery = query.replace(/[\\s　]+/g, ' ').trim()
+  const normalizedQuery = query.replace(/[\s　]+/g, ' ').trim()
   if (normalizedQuery.length > 300) {
     res.status(400).json({ error: '検索する地名は300文字以内で入力してください' })
     return
