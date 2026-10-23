@@ -78,11 +78,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     ].filter((value): value is string => Boolean(value)))).slice(0, 5)
 
     const candidateMap = new Map<string, GeocodeCandidate & { score: number }>()
-    const queryDigits = normalizedQuery.match(/\\d+/g) ?? []
-    const queryText = normalizedQuery.replace(/[\\s　,，、-]/g, '').toLowerCase()
+    const queryDigits = normalizedQuery.match(/\d+/g) ?? []
+    const queryText = normalizedQuery.replace(/[\s　,，、-]/g, '').toLowerCase()
+    // Japanese address strings often have no spaces, so split common admin/address markers too.
     const queryTokens = normalizedQuery
+      .replace(/^(沖縄県)?/, '')
+      .replace(/(都|道|府|県|市|区|町|村|丁目|番地?|号)/g, '$1 ')
       .replace(/[0-9０-９-]/g, ' ')
-      .split(/[\\s　,，、]+/)
+      .split(/[\s　,，、]+/)
       .map((part) => part.trim())
       .filter((part) => part.length >= 2 && !['沖縄県', '日本'].includes(part))
 
@@ -130,18 +133,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         const label = item.formatted?.trim() || [item.address_line1, item.address_line2].filter(Boolean).join(', ')
         if (!label || !Number.isFinite(lat) || !Number.isFinite(lon)) continue
 
-        const labelText = label.replace(/[\\s　,，、-]/g, '').toLowerCase()
+        const labelText = label.replace(/[\s　,，、-]/g, '').toLowerCase()
         const matchedTokens = queryTokens.filter((token) => label.includes(token)).length
         const matchedDigits = queryDigits.filter((digit) => labelText.includes(digit)).length
         const confidence = Number(item.rank?.confidence ?? 0)
         const streetConfidence = Number(item.rank?.confidence_street_level ?? 0)
 
-        // Rank address relevance first; confidence only breaks ties. Never return
-        // candidates that do not match any meaningful part of the entered address.
+        // Use the provider's relevance and address components; avoid discarding
+        // every result just because Japanese compound place names have no spaces.
         let score = matchedTokens * 10 + matchedDigits * 3 + confidence + streetConfidence
         if (labelText.includes(queryText)) score += 100
-        if (matchedTokens === 0) score -= 100
-        if (queryDigits.length > 0 && matchedDigits === 0) score -= 50
+        if (matchedTokens === 0) score -= 15
+        if (queryDigits.length > 0 && matchedDigits === 0) score -= 10
 
         const candidate = {
           label,
@@ -157,7 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     const candidates = Array.from(candidateMap.values())
-      .filter((candidate) => candidate.score > 0)
+      .filter((candidate) => candidate.score > -5)
       .sort((a, b) => b.score - a.score)
       .slice(0, 5)
       .map(({ score: _score, ...candidate }) => candidate)
