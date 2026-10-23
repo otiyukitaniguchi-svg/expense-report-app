@@ -1,22 +1,29 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { verifyUser } from './_lib/verifyUser.js'
 
-interface GeoapifyFeature {
-  properties?: {
-    place_id?: string
-    formatted?: string
-    address_line1?: string
-    address_line2?: string
-    lat?: number
-    lon?: number
-    rank?: {
-      confidence?: number
-      confidence_street_level?: number
-    }
+interface GeoapifyProperties {
+  place_id?: string
+  formatted?: string
+  address_line1?: string
+  address_line2?: string
+  lat?: number
+  lon?: number
+  rank?: {
+    confidence?: number
+    confidence_street_level?: number
   }
 }
 
+interface GeoapifyFeature {
+  properties?: GeoapifyProperties
+}
+
+interface GeoapifyResult extends GeoapifyProperties {}
+
 interface GeoapifyResponse {
+  // format=json returns a "results" array with properties at the top level.
+  results?: GeoapifyResult[]
+  // GeoJSON responses use "features[].properties".
   features?: GeoapifyFeature[]
 }
 
@@ -64,10 +71,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // Retry progressively broader/normalized forms only when the exact query has no hits.
     const queryVariants = Array.from(new Set([
       normalizedQuery,
-      normalizedQuery.includes('沖縄県') ? null : `沖縄県${normalizedQuery}`,
+      normalizedQuery.includes('沖縄県') ? null : `沖縄県 ${normalizedQuery}`,
       normalizedQuery.replace(/(\d+)-(\d+)-(\d+)/g, '$1丁目$2番$3号'),
       normalizedQuery.replace(/(\d+)-(\d+)/g, '$1丁目$2番'),
-      normalizedQuery.includes('沖縄県') ? null : `沖縄県 ${normalizedQuery}`
+      normalizedQuery.includes('沖縄県') ? null : `沖縄県 ${normalizedQuery.replace(/(\d+)-(\d+)-(\d+)/g, '$1丁目$2番$3号')}`
     ].filter((value): value is string => Boolean(value)))).slice(0, 5)
 
     let candidates: GeocodeCandidate[] = []
@@ -86,7 +93,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       })
 
       if (!geoRes.ok) {
-        // Log provider status and response details, but never log the request URL/API key.
         const errorBody = (await geoRes.text()).slice(0, 1000)
         console.error('[Geoapify] Request failed', {
           status: geoRes.status,
@@ -107,11 +113,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       }
 
       const body = (await geoRes.json()) as GeoapifyResponse
-      candidates = (body.features ?? [])
-        .map((feature) => {
-          const item = feature.properties
-          if (!item) return null
+      // Geoapify's format=json response uses body.results and flat result fields.
+      // Keep support for features[].properties as well in case the response format changes.
+      const items: GeoapifyProperties[] = body.results ?? (body.features ?? [])
+        .map((feature) => feature.properties)
+        .filter((item): item is GeoapifyProperties => Boolean(item))
 
+      candidates = items
+        .map((item) => {
           const lat = Number(item.lat)
           const lon = Number(item.lon)
           const label = item.formatted?.trim() || [item.address_line1, item.address_line2].filter(Boolean).join(', ')
