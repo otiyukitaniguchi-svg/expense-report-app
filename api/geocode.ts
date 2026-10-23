@@ -77,14 +77,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       normalizedQuery.includes('沖縄県') ? null : `沖縄県 ${normalizedQuery.replace(/(\d+)-(\d+)-(\d+)/g, '$1丁目$2番$3号')}`
     ].filter((value): value is string => Boolean(value)))).slice(0, 5)
 
-    let candidates: GeocodeCandidate[] = []
+    const candidateMap = new Map<string, GeocodeCandidate & { score: number }>()
+    const queryDigits = normalizedQuery.match(/\\d+/g) ?? []
+    const queryText = normalizedQuery.replace(/[\\s　,，、-]/g, '').toLowerCase()
+    const queryTokens = normalizedQuery
+      .replace(/[0-9０-９-]/g, ' ')
+      .split(/[\\s　,，、]+/)
+      .map((part) => part.trim())
+      .filter((part) => part.length >= 2 && !['沖縄県', '日本'].includes(part))
 
     for (const searchQuery of queryVariants) {
       const url = new URL('https://api.geoapify.com/v1/geocode/search')
       url.searchParams.set('text', searchQuery)
       url.searchParams.set('format', 'json')
       url.searchParams.set('lang', 'ja')
-      url.searchParams.set('limit', '5')
+      url.searchParams.set('limit', '10')
       url.searchParams.set('filter', 'countrycode:jp')
       url.searchParams.set('apiKey', apiKey)
 
@@ -97,7 +104,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         console.error('[Geoapify] Request failed', {
           status: geoRes.status,
           statusText: geoRes.statusText,
-          body: errorBody.replace(/(apiKey=)[^&\s]+/gi, '$1[REDACTED]')
+          body: errorBody.replace(/(apiKey=)[^&\\s]+/gi, '$1[REDACTED]')
         })
 
         if (geoRes.status === 401 || geoRes.status === 403) {
@@ -113,31 +120,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       }
 
       const body = (await geoRes.json()) as GeoapifyResponse
-      // Geoapify's format=json response uses body.results and flat result fields.
-      // Keep support for features[].properties as well in case the response format changes.
       const items: GeoapifyProperties[] = body.results ?? (body.features ?? [])
         .map((feature) => feature.properties)
         .filter((item): item is GeoapifyProperties => Boolean(item))
 
-      candidates = items
-        .map((item) => {
-          const lat = Number(item.lat)
-          const lon = Number(item.lon)
-          const label = item.formatted?.trim() || [item.address_line1, item.address_line2].filter(Boolean).join(', ')
+      for (const item of items) {
+        const lat = Number(item.lat)
+        const lon = Number(item.lon)
+        const label = item.formatted?.trim() || [item.address_line1, item.address_line2].filter(Boolean).join(', ')
+        if (!label || !Number.isFinite(lat) || !Number.isFinite(lon)) continue
 
-          if (!label || !Number.isFinite(lat) || !Number.isFinite(lon)) return null
+        const labelText = label.replace(/[\\s　,，、-]/g, '').toLowerCase()
+        const matchedTokens = queryTokens.filter((token) => label.includes(token)).length
+        const matchedDigits = queryDigits.filter((digit) => labelText.includes(digit)).length
+        const confidence = Number(item.rank?.confidence ?? 0)
+        const streetConfidence = Number(item.rank?.confidence_street_level ?? 0)
 
-          return {
-            label,
-            placeId: item.place_id || `${lat},${lon}`,
-            lat,
-            lon
-          }
-        })
-        .filter((item): item is GeocodeCandidate => item !== null)
+        // Rank address relevance first; confidence only breaks ties. Never return
+        // candidates that do not match any meaningful part of the entered address.
+        let score = matchedTokens * 10 + matchedDigits * 3 + confidence + streetConfidence
+        if (labelText.includes(queryText)) score += 100
+        if (matchedTokens === 0) score -= 100
+        if (queryDigits.length > 0 && matchedDigits === 0) score -= 50
 
-      if (candidates.length > 0) break
+        const candidate = {
+          label,
+          placeId: item.place_id || `${lat},${lon}`,
+          lat,
+          lon,
+          score
+        }
+        const key = candidate.placeId
+        const previous = candidateMap.get(key)
+        if (!previous || candidate.score > previous.score) candidateMap.set(key, candidate)
+      }
     }
+
+    const candidates = Array.from(candidateMap.values())
+      .filter((candidate) => candidate.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map(({ score: _score, ...candidate }) => candidate)
 
     res.status(200).json({ candidates })
   } catch (error) {
