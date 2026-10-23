@@ -65,8 +65,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const queryVariants = Array.from(new Set([
       normalizedQuery,
       normalizedQuery.includes('沖縄県') ? null : `沖縄県${normalizedQuery}`,
-      normalizedQuery.replace(/(\\d+)-(\\d+)-(\\d+)/g, '$1丁目$2番$3号'),
-      normalizedQuery.replace(/(\\d+)-(\\d+)/g, '$1丁目$2番'),
+      normalizedQuery.replace(/(\d+)-(\d+)-(\d+)/g, '$1丁目$2番$3号'),
+      normalizedQuery.replace(/(\d+)-(\d+)/g, '$1丁目$2番'),
       normalizedQuery.includes('沖縄県') ? null : `沖縄県 ${normalizedQuery}`
     ].filter((value): value is string => Boolean(value)))).slice(0, 5)
 
@@ -86,8 +86,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       })
 
       if (!geoRes.ok) {
+        // Log provider status and response details, but never log the request URL/API key.
+        const errorBody = (await geoRes.text()).slice(0, 1000)
+        console.error('[Geoapify] Request failed', {
+          status: geoRes.status,
+          statusText: geoRes.statusText,
+          body: errorBody.replace(/(apiKey=)[^&\s]+/gi, '$1[REDACTED]')
+        })
+
         if (geoRes.status === 401 || geoRes.status === 403) {
-          res.status(502).json({ error: '地名検索APIの認証に失敗しました。APIキーと利用上限を確認してください。' })
+          res.status(502).json({ error: '地名検索APIの認証に失敗しました。APIキーと利用制限を確認してください。' })
           return
         }
         if (geoRes.status === 429) {
@@ -123,7 +131,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     res.status(200).json({ candidates })
-  } catch {
+  } catch (error) {
+    console.error('[Geocode] Unexpected error', error instanceof Error ? error.message : 'Unknown error')
     res.status(502).json({ error: '地名検索に失敗しました。地名を確認して再試行してください。' })
   }
 }
