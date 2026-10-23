@@ -20,6 +20,13 @@ interface GeoapifyResponse {
   features?: GeoapifyFeature[]
 }
 
+interface GeocodeCandidate {
+  label: string
+  placeId: string
+  lat: number
+  lon: number
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' })
@@ -97,7 +104,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           lon
         }
       })
-      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .filter((item): item is GeocodeCandidate => item !== null)
 
     res.status(200).json({ candidates })
   } catch {
