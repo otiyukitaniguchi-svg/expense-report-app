@@ -60,51 +60,67 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   try {
-    const url = new URL('https://api.geoapify.com/v1/geocode/search')
-    url.searchParams.set('text', normalizedQuery)
-    url.searchParams.set('format', 'json')
-    url.searchParams.set('lang', 'ja')
-    url.searchParams.set('limit', '5')
-    url.searchParams.set('filter', 'countrycode:jp')
-    url.searchParams.set('apiKey', apiKey)
+    // Japanese addresses are not always indexed with the same number notation.
+    // Retry progressively broader/normalized forms only when the exact query has no hits.
+    const queryVariants = Array.from(new Set([
+      normalizedQuery,
+      normalizedQuery.includes('沖縄県') ? null : `沖縄県${normalizedQuery}`,
+      normalizedQuery.replace(/(\\d+)-(\\d+)-(\\d+)/g, '$1丁目$2番$3号'),
+      normalizedQuery.replace(/(\\d+)-(\\d+)/g, '$1丁目$2番'),
+      normalizedQuery.includes('沖縄県') ? null : `沖縄県 ${normalizedQuery}`
+    ].filter((value): value is string => Boolean(value)))).slice(0, 5)
 
-    const geoRes = await fetch(url.toString(), {
-      headers: { Accept: 'application/json' }
-    })
+    let candidates: GeocodeCandidate[] = []
 
-    if (!geoRes.ok) {
-      if (geoRes.status === 401 || geoRes.status === 403) {
-        res.status(502).json({ error: '地名検索APIの認証に失敗しました。APIキーと利用上限を確認してください。' })
-        return
-      }
-      if (geoRes.status === 429) {
-        res.status(503).json({ error: '地名検索の利用上限に達しました。少し時間をおいて再試行してください。' })
-        return
-      }
-      res.status(502).json({ error: `地名検索サービスの応答エラー (${geoRes.status})` })
-      return
-    }
+    for (const searchQuery of queryVariants) {
+      const url = new URL('https://api.geoapify.com/v1/geocode/search')
+      url.searchParams.set('text', searchQuery)
+      url.searchParams.set('format', 'json')
+      url.searchParams.set('lang', 'ja')
+      url.searchParams.set('limit', '5')
+      url.searchParams.set('filter', 'countrycode:jp')
+      url.searchParams.set('apiKey', apiKey)
 
-    const body = (await geoRes.json()) as GeoapifyResponse
-    const candidates = (body.features ?? [])
-      .map((feature) => {
-        const item = feature.properties
-        if (!item) return null
-
-        const lat = Number(item.lat)
-        const lon = Number(item.lon)
-        const label = item.formatted?.trim() || [item.address_line1, item.address_line2].filter(Boolean).join(', ')
-
-        if (!label || !Number.isFinite(lat) || !Number.isFinite(lon)) return null
-
-        return {
-          label,
-          placeId: item.place_id || `${lat},${lon}`,
-          lat,
-          lon
-        }
+      const geoRes = await fetch(url.toString(), {
+        headers: { Accept: 'application/json' }
       })
-      .filter((item): item is GeocodeCandidate => item !== null)
+
+      if (!geoRes.ok) {
+        if (geoRes.status === 401 || geoRes.status === 403) {
+          res.status(502).json({ error: '地名検索APIの認証に失敗しました。APIキーと利用上限を確認してください。' })
+          return
+        }
+        if (geoRes.status === 429) {
+          res.status(503).json({ error: '地名検索の利用上限に達しました。少し時間をおいて再試行してください。' })
+          return
+        }
+        res.status(502).json({ error: `地名検索サービスの応答エラー (${geoRes.status})` })
+        return
+      }
+
+      const body = (await geoRes.json()) as GeoapifyResponse
+      candidates = (body.features ?? [])
+        .map((feature) => {
+          const item = feature.properties
+          if (!item) return null
+
+          const lat = Number(item.lat)
+          const lon = Number(item.lon)
+          const label = item.formatted?.trim() || [item.address_line1, item.address_line2].filter(Boolean).join(', ')
+
+          if (!label || !Number.isFinite(lat) || !Number.isFinite(lon)) return null
+
+          return {
+            label,
+            placeId: item.place_id || `${lat},${lon}`,
+            lat,
+            lon
+          }
+        })
+        .filter((item): item is GeocodeCandidate => item !== null)
+
+      if (candidates.length > 0) break
+    }
 
     res.status(200).json({ candidates })
   } catch {
