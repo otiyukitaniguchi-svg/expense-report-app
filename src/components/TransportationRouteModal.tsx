@@ -303,7 +303,7 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
             </p>
           </div>
           <p className="text-xs text-gray-400">
-            地名データ: © OpenStreetMap contributors · 車の経路: OSRM
+            地名検索: <a href="https://www.geoapify.com/" target="_blank" rel="noreferrer" className="underline">Geoapify</a> · 地図データ: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">OpenStreetMap contributors</a> · 車の経路: OSRM
           </p>
           <div className="rounded-md bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
             交通費(自動計算): <span className="font-bold">{computedAmount.toLocaleString()} 円</span>
