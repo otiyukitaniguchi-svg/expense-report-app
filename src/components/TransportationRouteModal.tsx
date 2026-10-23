@@ -50,7 +50,6 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
   const [selectedDepartureIdx, setSelectedDepartureIdx] = useState(0)
   const [selectedArrivalIdx, setSelectedArrivalIdx] = useState(0)
   const [travelMode, setTravelMode] = useState('driving')
-  const [avoidTolls, setAvoidTolls] = useState(false)
 
   const activeSeasonalIndex = seasonalIndexForDate(date, settings)
   const denominator = settings.fuel_efficiency_km_per_liter * activeSeasonalIndex
@@ -88,7 +87,10 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
     }
     setSearching(true)
     try {
-      const [fromResults, toResults] = await Promise.all([geocode(departure), geocode(arrival)])
+      const fromResults = await geocode(departure)
+      // Public Nominatim permits at most one request per second per application.
+      await new Promise((resolve) => window.setTimeout(resolve, 1100))
+      const toResults = await geocode(arrival)
       if (fromResults.length === 0) {
         setError(`出発地「${departure}」の候補が見つかりませんでした。より具体的に入力してください。`)
         return
@@ -124,10 +126,10 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
-          fromPlaceId: from.placeId,
-          toPlaceId: to.placeId,
-          mode: travelMode,
-          avoidTolls
+          fromLat: from.lat,
+          fromLon: from.lon,
+          toLat: to.lat,
+          toLon: to.lon
         })
       })
       const body = await res.json()
@@ -228,16 +230,10 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
               ))}
             </select>
           </div>
-          {travelMode === 'driving' && (
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-              <input
-                type="checkbox"
-                checked={avoidTolls}
-                onChange={(e) => setAvoidTolls(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-200"
-              />
-              有料道路を利用しない
-            </label>
+          {travelMode !== 'driving' && (
+            <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              無料の経路サービスでは車以外の距離を自動計算できないため、距離を手入力してください。
+            </p>
           )}
 
           <button
@@ -285,10 +281,10 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
             <button
               type="button"
               onClick={calculateDistance}
-              disabled={calculating}
+              disabled={calculating || travelMode !== 'driving'}
               className="w-full rounded-md bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
             >
-              {calculating ? '計算中…' : 'この地点で距離を計算'}
+              {travelMode !== 'driving' ? '車以外の距離は手入力してください' : calculating ? '計算中…' : 'この地点で車の距離を計算'}
             </button>
           )}
 
@@ -296,15 +292,19 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
             <label className={labelClass}>距離(km)</label>
             <input
               type="number"
-              value={distanceKm}
-              readOnly
-              disabled
-              className={`${fieldClass} cursor-not-allowed text-gray-500`}
+              min="0.1"
+              step="0.1"
+              value={distanceKm || ''}
+              onChange={(e) => setDistanceKm(e.target.value === '' ? 0 : Number(e.target.value))}
+              className={fieldClass}
             />
-            <p className="mt-1 text-xs text-gray-400">
-              距離は手入力できません。「候補を検索」→「この地点で距離を計算」で自動設定されます。
+            <p className="mt-1 text-xs text-gray-500">
+              車の走行距離は自動計算できます。計算できない場合や車以外の交通手段では、距離を入力してください。
             </p>
           </div>
+          <p className="text-xs text-gray-400">
+            地名データ: © OpenStreetMap contributors · 車の経路: OSRM
+          </p>
           <div className="rounded-md bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
             交通費(自動計算): <span className="font-bold">{computedAmount.toLocaleString()} 円</span>
             <span className="ml-1 text-xs text-blue-500">

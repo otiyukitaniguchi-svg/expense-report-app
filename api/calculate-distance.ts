@@ -13,53 +13,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY
-  if (!apiKey) {
-    res.status(500).json({ error: 'サーバー環境変数(GOOGLE_MAPS_API_KEY)が設定されていません' })
+  const { fromLat, fromLon, toLat, toLon } = (req.body ?? {}) as {
+    fromLat?: number
+    fromLon?: number
+    toLat?: number
+    toLon?: number
+  }
+  const values = [fromLat, fromLon, toLat, toLon]
+  if (
+    values.some((value) => typeof value !== 'number' || !Number.isFinite(value)) ||
+    fromLat! < -90 || fromLat! > 90 ||
+    toLat! < -90 || toLat! > 90 ||
+    fromLon! < -180 || fromLon! > 180 ||
+    toLon! < -180 || toLon! > 180
+  ) {
+    res.status(400).json({ error: '出発地・到着地の座標が不正です' })
     return
   }
-
-  const { fromPlaceId, toPlaceId, mode, avoidTolls } = (req.body ?? {}) as {
-    fromPlaceId?: string
-    toPlaceId?: string
-    mode?: string
-    avoidTolls?: boolean
-  }
-  if (!fromPlaceId || !toPlaceId) {
-    res.status(400).json({ error: '出発地・到着地を指定してください' })
-    return
-  }
-  const allowedModes = ['driving', 'walking', 'bicycling', 'transit']
-  const travelMode = allowedModes.includes(mode ?? '') ? mode : 'driving'
 
   try {
-    let url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=place_id:${encodeURIComponent(fromPlaceId)}&destinations=place_id:${encodeURIComponent(toPlaceId)}&mode=${travelMode}&language=ja&key=${apiKey}`
-    if (travelMode === 'driving' && avoidTolls) {
-      url += '&avoid=tolls'
-    }
+    const coordinates = `${fromLon},${fromLat};${toLon},${toLat}`
+    const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=false&steps=false`
     const routeRes = await fetch(url)
     if (!routeRes.ok) {
-      res.status(502).json({ error: '経路計算サービスへの接続に失敗しました' })
-      return
-    }
-    const body = (await routeRes.json()) as {
-      status: string
-      error_message?: string
-      rows?: { elements: { status: string; distance?: { value: number } }[] }[]
-    }
-    if (body.status !== 'OK') {
-      res.status(502).json({ error: `経路計算に失敗しました(${body.status}) ${body.error_message ?? ''}` })
-      return
-    }
-    const element = body.rows?.[0]?.elements?.[0]
-    if (!element || element.status !== 'OK' || !element.distance) {
-      res.status(400).json({ error: '経路が見つかりませんでした。距離を手動で入力してください。' })
+      res.status(502).json({ error: '経路サービスが利用できません。距離を手入力してください。' })
       return
     }
 
-    const distanceKm = Math.round((element.distance.value / 1000) * 10) / 10
-    res.status(200).json({ distanceKm })
+    const body = (await routeRes.json()) as {
+      code: string
+      routes?: { distance: number }[]
+    }
+    const meters = body.routes?.[0]?.distance
+    if (body.code !== 'Ok' || typeof meters !== 'number' || !Number.isFinite(meters)) {
+      res.status(400).json({ error: '車の経路が見つかりません。距離を手入力してください。' })
+      return
+    }
+
+    res.status(200).json({ distanceKm: Math.round((meters / 1000) * 10) / 10 })
   } catch {
-    res.status(500).json({ error: '距離の自動計算に失敗しました。距離を手動で入力してください。' })
+    res.status(502).json({ error: '距離の自動計算に失敗しました。距離を手入力してください。' })
   }
 }
