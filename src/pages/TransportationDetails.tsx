@@ -53,12 +53,18 @@ export function TransportationDetails({
 
   async function load(): Promise<void> {
     setLoading(true)
-    const { data } = await supabase
+    const { data, error: loadError } = await supabase
       .from('transportation_routes')
       .select('*')
       .eq('user_id', viewingUserId)
       .is('report_id', null)
       .order('date', { ascending: false })
+    if (loadError) {
+      setError(loadError.message)
+      setRoutes([])
+      setLoading(false)
+      return
+    }
     setRoutes((data as TransportationRoute[]) ?? [])
     setLoading(false)
   }

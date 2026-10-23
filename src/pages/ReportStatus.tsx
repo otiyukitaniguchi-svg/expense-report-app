@@ -49,13 +49,19 @@ export function ReportStatus({ userId, userName, isAdmin, onOpenReport }: Props)
 
   async function load(): Promise<void> {
     setLoading(true)
-    const { data } = await supabase
+    const { data, error: loadError } = await supabase
       .from('expense_reports')
       .select('*')
       .eq('user_id', viewingUserId)
       .eq('report_type', reportTypeFilter)
       .in('status', ['submitted', 'approved', 'rejected'])
       .order('submitted_at', { ascending: false })
+    if (loadError) {
+      setError(loadError.message)
+      setReports([])
+      setLoading(false)
+      return
+    }
     setReports((data as ExpenseReport[]) ?? [])
     setLoading(false)
   }

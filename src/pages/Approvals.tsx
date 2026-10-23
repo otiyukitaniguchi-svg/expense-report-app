@@ -27,11 +27,17 @@ export function Approvals({ managerId, onOpenReport }: Props): JSX.Element {
 
   async function load(): Promise<void> {
     setLoading(true)
-    const { data } = await supabase
+    const { data, error: loadError } = await supabase
       .from('expense_reports')
       .select('*, profiles!expense_reports_user_id_fkey(name)')
       .in('status', ['submitted', 'approved', 'rejected'])
       .order('submitted_at', { ascending: false })
+    if (loadError) {
+      setError(loadError.message)
+      setReports([])
+      setLoading(false)
+      return
+    }
     setReports((data as ReportWithOwner[]) ?? [])
     setLoading(false)
   }
