@@ -24,6 +24,9 @@ const travelModeLabels: Record<string, string> = {
   transit: '公共交通機関'
 }
 
+// Google does not provide bicycle routing in Japan.
+const autoDistanceModes = new Set(['driving', 'walking', 'transit'])
+
 const fieldClass =
   'w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 transition focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100'
 const labelClass = 'mb-1.5 block text-sm font-medium text-gray-700'
@@ -50,6 +53,8 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
   const [selectedDepartureIdx, setSelectedDepartureIdx] = useState(0)
   const [selectedArrivalIdx, setSelectedArrivalIdx] = useState(0)
   const [travelMode, setTravelMode] = useState('driving')
+  const [avoidTolls, setAvoidTolls] = useState(false)
+  const canAutoCalculate = autoDistanceModes.has(travelMode)
 
   const activeSeasonalIndex = seasonalIndexForDate(date, settings)
   const denominator = settings.fuel_efficiency_km_per_liter * activeSeasonalIndex
@@ -87,10 +92,7 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
     }
     setSearching(true)
     try {
-      const fromResults = await geocode(departure)
-      // Public Nominatim permits at most one request per second per application.
-      await new Promise((resolve) => window.setTimeout(resolve, 1100))
-      const toResults = await geocode(arrival)
+      const [fromResults, toResults] = await Promise.all([geocode(departure), geocode(arrival)])
       if (fromResults.length === 0) {
         setError(`出発地「${departure}」の候補が見つかりませんでした。より具体的に入力してください。`)
         return
@@ -129,7 +131,9 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
           fromLat: from.lat,
           fromLon: from.lon,
           toLat: to.lat,
-          toLon: to.lon
+          toLon: to.lon,
+          travelMode,
+          avoidTolls
         })
       })
       const body = await res.json()
@@ -230,9 +234,20 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
               ))}
             </select>
           </div>
-          {travelMode !== 'driving' && (
+          {travelMode === 'driving' && (
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={avoidTolls}
+                onChange={(e) => setAvoidTolls(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              有料道路を使わない
+            </label>
+          )}
+          {!canAutoCalculate && (
             <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              無料の経路サービスでは車以外の距離を自動計算できないため、距離を手入力してください。
+              {travelModeLabels[travelMode]}は距離を自動計算できないため、距離を手入力してください。
             </p>
           )}
 
@@ -281,10 +296,14 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
             <button
               type="button"
               onClick={calculateDistance}
-              disabled={calculating || travelMode !== 'driving'}
+              disabled={calculating || !canAutoCalculate}
               className="w-full rounded-md bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
             >
-              {travelMode !== 'driving' ? '車以外の距離は手入力してください' : calculating ? '計算中…' : 'この地点で車の距離を計算'}
+              {!canAutoCalculate
+                ? `${travelModeLabels[travelMode]}の距離は手入力してください`
+                : calculating
+                  ? '計算中…'
+                  : `この地点で${travelModeLabels[travelMode]}の距離を計算`}
             </button>
           )}
 
@@ -299,12 +318,10 @@ export function TransportationRouteModal({ initialItem, settings, onSave, onClos
               className={fieldClass}
             />
             <p className="mt-1 text-xs text-gray-500">
-              車の走行距離は自動計算できます。計算できない場合や車以外の交通手段では、距離を入力してください。
+              車・徒歩・公共交通機関の距離は自動計算できます。計算できない場合は距離を入力してください。
             </p>
           </div>
-          <p className="text-xs text-gray-400">
-            地名検索: <a href="https://www.geoapify.com/" target="_blank" rel="noreferrer" className="underline">Geoapify</a> · 地図データ: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">OpenStreetMap contributors</a> · 車の経路: OSRM
-          </p>
+          <p className="text-xs text-gray-400">地名検索・経路: Google Maps</p>
           <div className="rounded-md bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
             交通費(自動計算): <span className="font-bold">{computedAmount.toLocaleString()} 円</span>
             <span className="ml-1 text-xs text-blue-500">
